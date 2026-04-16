@@ -603,7 +603,7 @@
       "priority": "P1",
       "title": "Implement fixture_loader_tests",
       "description": "Implement comprehensive tests in tests/fixture_loader_tests.rs for fixture loading",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify FixtureLoader can load cli-basic fixture",
         "AddUnitTest: verify FixtureLoader can load api-project fixture",
@@ -627,7 +627,7 @@
       "priority": "P1",
       "title": "Implement smoke_task_loading_tests",
       "description": "Implement comprehensive tests in tests/smoke_task_loading_tests.rs for loading all smoke tasks",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify TaskLoader can load all SMOKE-CLI-* tasks",
         "AddUnitTest: verify TaskLoader can load all SMOKE-WS-* tasks",
