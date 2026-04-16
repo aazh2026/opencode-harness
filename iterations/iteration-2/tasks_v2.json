@@ -686,7 +686,7 @@
       "priority": "P1",
       "title": "Verify cargo build --package core passes",
       "description": "Verify that cargo build --package opencode-core succeeds after all P0 and P1 items are complete",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "RunTestSuite: ensure cargo build --package opencode-core completes without errors",
         "AddRegressionTest: ensure no compilation warnings in opencode-core package"
