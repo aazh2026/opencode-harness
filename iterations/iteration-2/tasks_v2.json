@@ -901,7 +901,7 @@
       "priority": "P2",
       "title": "Implement LegacyRunner::execute() with actual binary invocation",
       "description": "Implement LegacyRunner::execute() method with actual binary invocation in runners/ directory",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify LegacyRunner struct is properly implemented",
         "AddUnitTest: verify execute() method invokes binary correctly",
@@ -928,7 +928,7 @@
       "priority": "P2",
       "title": "Implement RustRunner::execute() with actual binary invocation",
       "description": "Implement RustRunner::execute() method with actual binary invocation in runners/ directory",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify RustRunner struct is properly implemented",
         "AddUnitTest: verify execute() method invokes binary correctly",
