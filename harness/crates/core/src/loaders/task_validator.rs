@@ -169,7 +169,7 @@ mod tests {
 
     fn create_valid_task() -> Task {
         Task::new(
-            "P2-001",
+            "AB-CD-001",
             "Define Task Schema",
             TaskCategory::Schema,
             "fixtures/projects/example",
@@ -204,6 +204,9 @@ mod tests {
     fn test_validate_valid_task() {
         let validator = DefaultTaskSchemaValidator::new();
         let task = create_valid_task();
+        if let Err(e) = validator.validate(&task) {
+            panic!("Validation failed: {:?}", e);
+        }
         assert!(validator.validate(&task).is_ok());
     }
 
@@ -320,7 +323,7 @@ mod tests {
         let file_path = temp_dir.path().join("task.yaml");
 
         let yaml_content = r#"
-id: P2-001
+id: AB-CD-001
 title: Define Task Schema
 category: schema
 fixture_project: fixtures/projects/example
