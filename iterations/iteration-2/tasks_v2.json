@@ -1,0 +1,954 @@
+{
+  "tasks": [
+    {
+      "id": "P0-1",
+      "priority": "P0",
+      "title": "Add EntryMode enum",
+      "description": "Create EntryMode enum with variants: CLI, API, Session, Permissions, Web, Workspace, Recovery in types/ module",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify EntryMode enum variants are correctly defined",
+        "AddUnitTest: verify EntryMode can be serialized/deserialized to/from JSON",
+        "AddUnitTest: verify EntryMode::CLI, EntryMode::API, EntryMode::Session, EntryMode::Permissions, EntryMode::Web, EntryMode::Workspace, EntryMode::Recovery all exist"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test entry_mode",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Add to harness/crates/core/src/types/ with proper serde derives",
+      "dependencies": []
+    },
+    {
+      "id": "P0-2",
+      "priority": "P0",
+      "title": "Add AgentMode enum",
+      "description": "Create AgentMode enum with variants: Interactive, Batch, Daemon, OneShot in types/ module",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify AgentMode enum variants are correctly defined",
+        "AddUnitTest: verify AgentMode can be serialized/deserialized to/from JSON",
+        "AddUnitTest: verify AgentMode::Interactive, AgentMode::Batch, AgentMode::Daemon, AgentMode::OneShot all exist"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test agent_mode",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Add to harness/crates/core/src/types/ with proper serde derives",
+      "dependencies": []
+    },
+    {
+      "id": "P0-3",
+      "priority": "P0",
+      "title": "Add ProviderMode enum",
+      "description": "Create ProviderMode enum with variants: OpenCode, OpenCodeRS, Both, Either in types/ module",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify ProviderMode enum variants are correctly defined",
+        "AddUnitTest: verify ProviderMode can be serialized/deserialized to/from JSON",
+        "AddUnitTest: verify ProviderMode::OpenCode, ProviderMode::OpenCodeRS, ProviderMode::Both, ProviderMode::Either all exist"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test provider_mode",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Add to harness/crates/core/src/types/ with proper serde derives",
+      "dependencies": []
+    },
+    {
+      "id": "P0-4",
+      "priority": "P0",
+      "title": "Add Severity enum",
+      "description": "Create Severity enum with variants: critical, high, medium, low, cosmetic in types/ module",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify Severity enum variants are correctly defined",
+        "AddUnitTest: verify Severity can be serialized/deserialized to/from JSON",
+        "AddUnitTest: verify all five severity levels (critical, high, medium, low, cosmetic) exist"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test severity",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Add to harness/crates/core/src/types/ with proper serde derives",
+      "dependencies": []
+    },
+    {
+      "id": "P0-5",
+      "priority": "P0",
+      "title": "Create Assertion model with 6 types",
+      "description": "Create Assertion model in types/assertion.rs with 6 assertion types: exit_code_equals, stdout_contains, stderr_contains, file_changed, no_extra_files_changed, permission_prompt_seen",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify AssertionType::ExitCodeEquals(u32) works correctly",
+        "AddUnitTest: verify AssertionType::StdoutContains(String) works correctly",
+        "AddUnitTest: verify AssertionType::StderrContains(String) works correctly",
+        "AddUnitTest: verify AssertionType::FileChanged(String) works correctly",
+        "AddUnitTest: verify AssertionType::NoExtraFilesChanged works correctly",
+        "AddUnitTest: verify AssertionType::PermissionPromptSeen(String) works correctly",
+        "AddUnitTest: verify Assertion can be serialized/deserialized to/from JSON"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test assertion",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Define AssertionType enum with all 6 variants in harness/crates/core/src/types/assertion.rs",
+      "dependencies": []
+    },
+    {
+      "id": "P0-6",
+      "priority": "P0",
+      "title": "Create ExecutionPolicy enum",
+      "description": "Create ExecutionPolicy enum with variants: ManualCheck, Blocked, Skip in types/execution_policy.rs",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify ExecutionPolicy::ManualCheck exists and works",
+        "AddUnitTest: verify ExecutionPolicy::Blocked exists and works",
+        "AddUnitTest: verify ExecutionPolicy::Skip exists and works",
+        "AddUnitTest: verify ExecutionPolicy can be serialized/deserialized to/from JSON"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test execution_policy",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Define ExecutionPolicy enum in harness/crates/core/src/types/execution_policy.rs",
+      "dependencies": []
+    },
+    {
+      "id": "P0-7",
+      "priority": "P0",
+      "title": "Create OnMissingDependency enum",
+      "description": "Create OnMissingDependency enum with variants: Fail, Skip, Warn, Blocked in types/on_missing_dependency.rs",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify OnMissingDependency::Fail exists and works",
+        "AddUnitTest: verify OnMissingDependency::Skip exists and works",
+        "AddUnitTest: verify OnMissingDependency::Warn exists and works",
+        "AddUnitTest: verify OnMissingDependency::Blocked exists and works",
+        "AddUnitTest: verify OnMissingDependency can be serialized/deserialized to/from JSON"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test on_missing_dependency",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Define OnMissingDependency enum in harness/crates/core/src/types/on_missing_dependency.rs",
+      "dependencies": []
+    },
+    {
+      "id": "P0-8",
+      "priority": "P0",
+      "title": "Create TaskInput struct",
+      "description": "Create TaskInput struct with fields: command, args, cwd in types/ module",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify TaskInput struct can be instantiated with command, args, cwd",
+        "AddUnitTest: verify TaskInput can be serialized/deserialized to/from JSON",
+        "AddUnitTest: verify TaskInput fields are accessible and correctly typed"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test task_input",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Define TaskInput struct in harness/crates/core/src/types/ with proper serde derives",
+      "dependencies": []
+    },
+    {
+      "id": "P0-9",
+      "priority": "P0",
+      "title": "Create AllowedVariance struct",
+      "description": "Create AllowedVariance struct with fields: exit_code, timing_ms, output_patterns in types/ module",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify AllowedVariance struct can be instantiated with exit_code, timing_ms, output_patterns",
+        "AddUnitTest: verify AllowedVariance can be serialized/deserialized to/from JSON",
+        "AddUnitTest: verify AllowedVariance fields are accessible and correctly typed"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test allowed_variance",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Define AllowedVariance struct in harness/crates/core/src/types/ with proper serde derives",
+      "dependencies": []
+    },
+    {
+      "id": "P0-10",
+      "priority": "P0",
+      "title": "Create TaskOutputs struct",
+      "description": "Create TaskOutputs struct with fields: stdout, stderr, files_created, files_modified in types/ module",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify TaskOutputs struct can be instantiated with stdout, stderr, files_created, files_modified",
+        "AddUnitTest: verify TaskOutputs can be serialized/deserialized to/from JSON",
+        "AddUnitTest: verify TaskOutputs fields are accessible and correctly typed"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test task_outputs",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Define TaskOutputs struct in harness/crates/core/src/types/ with proper serde derives",
+      "dependencies": []
+    },
+    {
+      "id": "P0-11",
+      "priority": "P0",
+      "title": "Extend Task struct with all PRD required fields",
+      "description": "Extend Task struct in types/task.rs with: preconditions, entry_mode, agent_mode, provider_mode, input, expected_assertions, allowed_variance, severity, tags, execution_policy, timeout_seconds, on_missing_dependency, expected_outputs",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify extended Task struct has all required fields",
+        "AddUnitTest: verify Task struct can be serialized/deserialized to/from JSON",
+        "AddUnitTest: verify all new fields are correctly typed and accessible",
+        "AddIntegrationTest: verify Task struct integrates with EntryMode, AgentMode, ProviderMode, Severity enums"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test task",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Extend existing Task struct in harness/crates/core/src/types/task.rs with all new fields",
+      "dependencies": [
+        "P0-1",
+        "P0-2",
+        "P0-3",
+        "P0-4",
+        "P0-5",
+        "P0-6",
+        "P0-7",
+        "P0-8",
+        "P0-9",
+        "P0-10"
+      ]
+    },
+    {
+      "id": "P0-12",
+      "priority": "P0",
+      "title": "Implement TaskSchemaValidator trait",
+      "description": "Implement TaskSchemaValidator trait in loaders/task_validator.rs with validate and validate_file methods",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify TaskSchemaValidator trait is properly defined with Send + Sync bounds",
+        "AddUnitTest: verify validate() method validates Task struct correctly",
+        "AddUnitTest: verify validate_file() method validates Task YAML files correctly",
+        "AddIntegrationTest: verify TaskSchemaValidator works with Assertion, ExecutionPolicy, OnMissingDependency types"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test task_validator",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Define TaskSchemaValidator trait in harness/crates/core/src/loaders/task_validator.rs",
+      "dependencies": [
+        "P0-5",
+        "P0-6",
+        "P0-7",
+        "P0-11"
+      ]
+    },
+    {
+      "id": "P0-13",
+      "priority": "P0",
+      "title": "Implement FixtureLoader trait",
+      "description": "Implement FixtureLoader trait in loaders/fixture_loader.rs with load, init_workspace, cleanup_workspace methods",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify FixtureLoader trait is properly defined with Send + Sync bounds",
+        "AddUnitTest: verify load() method loads FixtureProject correctly",
+        "AddUnitTest: verify init_workspace() method initializes workspace correctly",
+        "AddUnitTest: verify cleanup_workspace() method cleans up workspace correctly"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test fixture_loader",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Define FixtureLoader trait in harness/crates/core/src/loaders/fixture_loader.rs",
+      "dependencies": [
+        "P0-14"
+      ]
+    },
+    {
+      "id": "P0-14",
+      "priority": "P0",
+      "title": "Add WorkspacePolicy struct to Fixture schema",
+      "description": "Add WorkspacePolicy struct with fields: allow_dirty_git, allow_network, preserve_on_failure to types/fixture.rs",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify WorkspacePolicy struct can be instantiated with all three fields",
+        "AddUnitTest: verify WorkspacePolicy can be serialized/deserialized to/from JSON"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test fixture",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Add WorkspacePolicy struct to harness/crates/core/src/types/fixture.rs",
+      "dependencies": []
+    },
+    {
+      "id": "P0-15",
+      "priority": "P0",
+      "title": "Add ResetStrategy enum to Fixture schema",
+      "description": "Add ResetStrategy enum with variants: None, CleanClone, RestoreFiles to types/fixture.rs",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify ResetStrategy enum has all three variants",
+        "AddUnitTest: verify ResetStrategy can be serialized/deserialized to/from JSON"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test fixture",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Add ResetStrategy enum to harness/crates/core/src/types/fixture.rs",
+      "dependencies": []
+    },
+    {
+      "id": "P0-16",
+      "priority": "P0",
+      "title": "Complete FixtureProject struct with all missing fields",
+      "description": "Complete FixtureProject struct in types/fixture.rs with WorkspacePolicy and ResetStrategy integration",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify FixtureProject struct has all required fields including WorkspacePolicy and ResetStrategy",
+        "AddUnitTest: verify FixtureProject can be serialized/deserialized to/from JSON",
+        "AddIntegrationTest: verify FixtureProject integrates with WorkspacePolicy and ResetStrategy"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test fixture",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Extend FixtureProject struct in harness/crates/core/src/types/fixture.rs",
+      "dependencies": [
+        "P0-14",
+        "P0-15"
+      ]
+    },
+    {
+      "id": "P0-17",
+      "priority": "P0",
+      "title": "Create cli-basic fixture project",
+      "description": "Create fixture project at fixtures/projects/cli-basic/ with harness.toml and scripts for basic CLI testing",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify fixtures/projects/cli-basic/harness.toml parses correctly",
+        "AddIntegrationTest: verify fixture scripts are executable",
+        "RunTestSuite: verify FixtureLoader can load cli-basic fixture"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test fixture_loader -- cli_basic",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create fixtures/projects/cli-basic/ directory with harness.toml and necessary scripts",
+      "dependencies": [
+        "P0-13"
+      ]
+    },
+    {
+      "id": "P0-18",
+      "priority": "P0",
+      "title": "Create api-project fixture project",
+      "description": "Create fixture project at fixtures/projects/api-project/ with harness.toml and scripts for API testing",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify fixtures/projects/api-project/harness.toml parses correctly",
+        "AddIntegrationTest: verify fixture scripts are executable",
+        "RunTestSuite: verify FixtureLoader can load api-project fixture"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test fixture_loader -- api_project",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create fixtures/projects/api-project/ directory with harness.toml and necessary scripts",
+      "dependencies": [
+        "P0-13"
+      ]
+    },
+    {
+      "id": "P0-19",
+      "priority": "P0",
+      "title": "Create SMOKE-CLI-001 (CLI help command)",
+      "description": "Create smoke test task for CLI help command in tasks/cli/SMOKE-CLI-001.yaml",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify tasks/cli/SMOKE-CLI-001.yaml parses correctly",
+        "AddUnitTest: verify TaskLoader can load SMOKE-CLI-001 task",
+        "AddRegressionTest: ensure Task schema validation passes for SMOKE-CLI-001"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test smoke_task_loading -- SMOKE_CLI_001",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create tasks/cli/SMOKE-CLI-001.yaml using CLI Task Template format",
+      "dependencies": [
+        "P0-11"
+      ]
+    },
+    {
+      "id": "P0-20",
+      "priority": "P0",
+      "title": "Create SMOKE-CLI-002 (CLI version command)",
+      "description": "Create smoke test task for CLI version command in tasks/cli/SMOKE-CLI-002.yaml",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify tasks/cli/SMOKE-CLI-002.yaml parses correctly",
+        "AddUnitTest: verify TaskLoader can load SMOKE-CLI-002 task",
+        "AddRegressionTest: ensure Task schema validation passes for SMOKE-CLI-002"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test smoke_task_loading -- SMOKE_CLI_002",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create tasks/cli/SMOKE-CLI-002.yaml using CLI Task Template format",
+      "dependencies": [
+        "P0-11"
+      ]
+    },
+    {
+      "id": "P0-21",
+      "priority": "P0",
+      "title": "Create SMOKE-WS-001 (Workspace init clean)",
+      "description": "Create smoke test task for workspace initialization in tasks/workspace/SMOKE-WS-001.yaml",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify tasks/workspace/SMOKE-WS-001.yaml parses correctly",
+        "AddUnitTest: verify TaskLoader can load SMOKE-WS-001 task",
+        "AddRegressionTest: ensure Task schema validation passes for SMOKE-WS-001"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test smoke_task_loading -- SMOKE_WS_001",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create tasks/workspace/SMOKE-WS-001.yaml using Workspace Task Template format",
+      "dependencies": [
+        "P0-11"
+      ]
+    },
+    {
+      "id": "P0-22",
+      "priority": "P0",
+      "title": "Create SMOKE-WS-002 (Workspace cleanup)",
+      "description": "Create smoke test task for workspace cleanup in tasks/workspace/SMOKE-WS-002.yaml",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify tasks/workspace/SMOKE-WS-002.yaml parses correctly",
+        "AddUnitTest: verify TaskLoader can load SMOKE-WS-002 task",
+        "AddRegressionTest: ensure Task schema validation passes for SMOKE-WS-002"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test smoke_task_loading -- SMOKE_WS_002",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create tasks/workspace/SMOKE-WS-002.yaml using Workspace Task Template format",
+      "dependencies": [
+        "P0-11"
+      ]
+    },
+    {
+      "id": "P0-23",
+      "priority": "P0",
+      "title": "Create SMOKE-SESSION-001 (Session start)",
+      "description": "Create smoke test task for session start in tasks/session/SMOKE-SESSION-001.yaml",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify tasks/session/SMOKE-SESSION-001.yaml parses correctly",
+        "AddUnitTest: verify TaskLoader can load SMOKE-SESSION-001 task",
+        "AddRegressionTest: ensure Task schema validation passes for SMOKE-SESSION-001"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test smoke_task_loading -- SMOKE_SESSION_001",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create tasks/session/SMOKE-SESSION-001.yaml using Session Task Template format",
+      "dependencies": [
+        "P0-11"
+      ]
+    },
+    {
+      "id": "P0-24",
+      "priority": "P0",
+      "title": "Create SMOKE-PERM-001 (Permission prompt)",
+      "description": "Create smoke test task for permission prompt in tasks/permissions/SMOKE-PERM-001.yaml",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify tasks/permissions/SMOKE-PERM-001.yaml parses correctly",
+        "AddUnitTest: verify TaskLoader can load SMOKE-PERM-001 task",
+        "AddRegressionTest: ensure Task schema validation passes for SMOKE-PERM-001"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test smoke_task_loading -- SMOKE_PERM_001",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create tasks/permissions/SMOKE-PERM-001.yaml using Permissions Task Template format",
+      "dependencies": [
+        "P0-11"
+      ]
+    },
+    {
+      "id": "P0-25",
+      "priority": "P0",
+      "title": "Create SMOKE-API-001 (API health check)",
+      "description": "Create smoke test task for API health check in tasks/api/SMOKE-API-001.yaml",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify tasks/api/SMOKE-API-001.yaml parses correctly",
+        "AddUnitTest: verify TaskLoader can load SMOKE-API-001 task",
+        "AddRegressionTest: ensure Task schema validation passes for SMOKE-API-001"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test smoke_task_loading -- SMOKE_API_001",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create tasks/api/SMOKE-API-001.yaml using API Task Template format",
+      "dependencies": [
+        "P0-11"
+      ]
+    },
+    {
+      "id": "P0-26",
+      "priority": "P0",
+      "title": "Create 3-5 additional high-value smoke tasks per category",
+      "description": "Create 3-5 additional smoke test tasks for each category (CLI, workspace, session, permissions, api) in tasks/*/ directory",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify all new smoke tasks in tasks/cli/ parse correctly",
+        "AddIntegrationTest: verify all new smoke tasks in tasks/workspace/ parse correctly",
+        "AddIntegrationTest: verify all new smoke tasks in tasks/session/ parse correctly",
+        "AddIntegrationTest: verify all new smoke tasks in tasks/permissions/ parse correctly",
+        "AddIntegrationTest: verify all new smoke tasks in tasks/api/ parse correctly",
+        "RunTestSuite: verify TaskLoader can load all new smoke tasks"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test smoke_task_loading",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create additional smoke tasks in respective tasks/*/ directories following template format",
+      "dependencies": [
+        "P0-11"
+      ]
+    },
+    {
+      "id": "P1-1",
+      "priority": "P1",
+      "title": "Implement TaskLoader trait",
+      "description": "Implement TaskLoader trait in loaders/task_loader.rs with load_from_dir and load_single methods",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify TaskLoader trait is properly defined with Send + Sync bounds",
+        "AddUnitTest: verify load_from_dir() method loads all tasks from directory correctly",
+        "AddUnitTest: verify load_single() method loads single task correctly",
+        "AddIntegrationTest: verify TaskLoader works with TaskSchemaValidator"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test task_loader",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Define TaskLoader trait in harness/crates/core/src/loaders/task_loader.rs",
+      "dependencies": [
+        "P0-11",
+        "P0-12"
+      ]
+    },
+    {
+      "id": "P1-2",
+      "priority": "P1",
+      "title": "Update module exports",
+      "description": "Update module exports in types/mod.rs and loaders/mod.rs to export all new types and traits",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify types/mod.rs exports all new enums and structs",
+        "AddUnitTest: verify loaders/mod.rs exports all new traits",
+        "AddIntegrationTest: verify module exports compile correctly"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test module_exports",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Update mod.rs files in harness/crates/core/src/types/ and harness/crates/core/src/loaders/",
+      "dependencies": [
+        "P0-5",
+        "P0-6",
+        "P0-7",
+        "P0-8",
+        "P0-9",
+        "P0-10",
+        "P0-12",
+        "P1-1"
+      ]
+    },
+    {
+      "id": "P1-3",
+      "priority": "P1",
+      "title": "Implement task_schema_tests",
+      "description": "Implement comprehensive tests in tests/task_schema_tests.rs for task schema validation",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify Task schema validation for all required fields",
+        "AddUnitTest: verify Task schema validation fails on missing required fields",
+        "AddUnitTest: verify Task schema validation handles invalid enum variants",
+        "AddErrorHandlingTest: test edge cases like empty preconditions, invalid timeout values"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test task_schema_tests",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Implement tests in harness/crates/core/tests/task_schema_tests.rs",
+      "dependencies": [
+        "P0-12",
+        "P0-19",
+        "P0-20",
+        "P0-21",
+        "P0-22",
+        "P0-23",
+        "P0-24",
+        "P0-25",
+        "P0-26"
+      ]
+    },
+    {
+      "id": "P1-4",
+      "priority": "P1",
+      "title": "Implement fixture_loader_tests",
+      "description": "Implement comprehensive tests in tests/fixture_loader_tests.rs for fixture loading",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify FixtureLoader can load cli-basic fixture",
+        "AddUnitTest: verify FixtureLoader can load api-project fixture",
+        "AddUnitTest: verify init_workspace creates correct workspace structure",
+        "AddUnitTest: verify cleanup_workspace removes workspace correctly",
+        "AddErrorHandlingTest: test fixture loading with missing files"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test fixture_loader_tests",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Implement tests in harness/crates/core/tests/fixture_loader_tests.rs",
+      "dependencies": [
+        "P0-13",
+        "P0-17",
+        "P0-18"
+      ]
+    },
+    {
+      "id": "P1-5",
+      "priority": "P1",
+      "title": "Implement smoke_task_loading_tests",
+      "description": "Implement comprehensive tests in tests/smoke_task_loading_tests.rs for loading all smoke tasks",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify TaskLoader can load all SMOKE-CLI-* tasks",
+        "AddUnitTest: verify TaskLoader can load all SMOKE-WS-* tasks",
+        "AddUnitTest: verify TaskLoader can load all SMOKE-SESSION-* tasks",
+        "AddUnitTest: verify TaskLoader can load all SMOKE-PERM-* tasks",
+        "AddUnitTest: verify TaskLoader can load all SMOKE-API-* tasks",
+        "RunTestSuite: verify all smoke tasks load without errors"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test smoke_task_loading_tests",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Implement tests in harness/crates/core/tests/smoke_task_loading_tests.rs",
+      "dependencies": [
+        "P1-1",
+        "P0-19",
+        "P0-20",
+        "P0-21",
+        "P0-22",
+        "P0-23",
+        "P0-24",
+        "P0-25",
+        "P0-26"
+      ]
+    },
+    {
+      "id": "P1-6",
+      "priority": "P1",
+      "title": "Update types/mod.rs exports",
+      "description": "Update types/mod.rs to export all new enums, structs from P0 type tasks",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify all P0 type exports are available from types module",
+        "AddIntegrationTest: verify types compile and exports are correct"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test types_mod_exports",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Update harness/crates/core/src/types/mod.rs with all new exports",
+      "dependencies": [
+        "P0-1",
+        "P0-2",
+        "P0-3",
+        "P0-4",
+        "P0-5",
+        "P0-6",
+        "P0-7",
+        "P0-8",
+        "P0-9",
+        "P0-10"
+      ]
+    },
+    {
+      "id": "P1-7",
+      "priority": "P1",
+      "title": "Verify cargo build --package core passes",
+      "description": "Verify that cargo build --package opencode-core succeeds after all P0 and P1 items are complete",
+      "status": "todo",
+      "test_criteria": [
+        "RunTestSuite: ensure cargo build --package opencode-core completes without errors",
+        "AddRegressionTest: ensure no compilation warnings in opencode-core package"
+      ],
+      "test_commands": [
+        "cargo build --package opencode-core",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "This is a verification task that depends on all P0 and P1 items being complete",
+      "dependencies": [
+        "P0-1",
+        "P0-2",
+        "P0-3",
+        "P0-4",
+        "P0-5",
+        "P0-6",
+        "P0-7",
+        "P0-8",
+        "P0-9",
+        "P0-10",
+        "P0-11",
+        "P0-12",
+        "P0-13",
+        "P0-14",
+        "P0-15",
+        "P0-16",
+        "P1-1",
+        "P1-2",
+        "P1-6"
+      ]
+    },
+    {
+      "id": "P1-8",
+      "priority": "P1",
+      "title": "Verify cargo test passes",
+      "description": "Verify that cargo test passes after P1-3, P1-4, P1-5 are implemented",
+      "status": "todo",
+      "test_criteria": [
+        "RunTestSuite: ensure cargo test passes all tests",
+        "AddRegressionTest: ensure all task_schema_tests pass",
+        "AddRegressionTest: ensure all fixture_loader_tests pass",
+        "AddRegressionTest: ensure all smoke_task_loading_tests pass"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "This is a verification task that depends on P1-3, P1-4, P1-5 being complete",
+      "dependencies": [
+        "P1-3",
+        "P1-4",
+        "P1-5"
+      ]
+    },
+    {
+      "id": "P2-1",
+      "priority": "P2",
+      "title": "Implement DifferentialRunner",
+      "description": "Implement DifferentialRunner in runners/differential_runner.rs for running differential tests",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify DifferentialRunner struct is properly implemented",
+        "AddUnitTest: verify execute() method runs differential comparison correctly",
+        "AddIntegrationTest: verify DifferentialRunner integrates with TaskLoader"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test differential_runner",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Implement DifferentialRunner in harness/crates/core/src/runners/differential_runner.rs",
+      "dependencies": [
+        "P1-1",
+        "P1-2",
+        "P1-3",
+        "P1-4",
+        "P1-5",
+        "P1-6",
+        "P1-7",
+        "P1-8"
+      ]
+    },
+    {
+      "id": "P2-2",
+      "priority": "P2",
+      "title": "Implement Normalizer trait with actual logic",
+      "description": "Implement Normalizer trait with actual normalization logic in normalizers/ directory",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify Normalizer trait is properly defined",
+        "AddUnitTest: verify normalize() method correctly normalizes outputs",
+        "AddIntegrationTest: verify Normalizer integrates with DifferentialRunner"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test normalizer",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Implement Normalizer trait in harness/crates/core/src/normalizers/",
+      "dependencies": [
+        "P1-1",
+        "P1-2",
+        "P1-3",
+        "P1-4",
+        "P1-5",
+        "P1-6",
+        "P1-7",
+        "P1-8"
+      ]
+    },
+    {
+      "id": "P2-3",
+      "priority": "P2",
+      "title": "Implement Comparator trait with actual logic",
+      "description": "Implement Comparator trait with actual comparison logic in comparators/ directory",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify Comparator trait is properly defined",
+        "AddUnitTest: verify compare() method correctly compares outputs",
+        "AddIntegrationTest: verify Comparator integrates with DifferentialRunner"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test comparator",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Implement Comparator trait in harness/crates/core/src/comparators/",
+      "dependencies": [
+        "P1-1",
+        "P1-2",
+        "P1-3",
+        "P1-4",
+        "P1-5",
+        "P1-6",
+        "P1-7",
+        "P1-8"
+      ]
+    },
+    {
+      "id": "P2-4",
+      "priority": "P2",
+      "title": "Implement Verifier trait with actual logic",
+      "description": "Implement Verifier trait with actual verification logic in verifiers/ directory",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify Verifier trait is properly defined",
+        "AddUnitTest: verify verify() method correctly verifies assertions",
+        "AddIntegrationTest: verify Verifier integrates with task execution"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test verifier",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Implement Verifier trait in harness/crates/core/src/verifiers/",
+      "dependencies": [
+        "P1-1",
+        "P1-2",
+        "P1-3",
+        "P1-4",
+        "P1-5",
+        "P1-6",
+        "P1-7",
+        "P1-8"
+      ]
+    },
+    {
+      "id": "P2-5",
+      "priority": "P2",
+      "title": "Connect CLI run command to TaskLoader/Runner",
+      "description": "Connect CLI run command to TaskLoader/Runner in cli/ directory for end-to-end execution",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify CLI run command executes TaskLoader correctly",
+        "AddIntegrationTest: verify CLI run command uses Runner to execute tasks",
+        "AddEndToEndTest: verify full task execution from CLI to output"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-cli --test cli_run",
+        "cargo clippy -p opencode-cli -- -D warnings"
+      ],
+      "impl_notes": "Update CLI implementation in harness/crates/cli/src/",
+      "dependencies": [
+        "P1-1",
+        "P1-2",
+        "P1-3",
+        "P1-4",
+        "P1-5",
+        "P1-6",
+        "P1-7",
+        "P1-8"
+      ]
+    },
+    {
+      "id": "P2-6",
+      "priority": "P2",
+      "title": "Create workspace-lifecycle.md documentation",
+      "description": "Create workspace-lifecycle.md documentation in docs/ directory describing workspace lifecycle management",
+      "status": "todo",
+      "test_criteria": [
+        "AddRegressionTest: verify workspace-lifecycle.md exists and is valid markdown",
+        "AddIntegrationTest: verify documentation matches FixtureProject implementation"
+      ],
+      "test_commands": [
+        "cargo doc -p opencode-core",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Create docs/workspace-lifecycle.md documenting workspace lifecycle",
+      "dependencies": [
+        "P0-13",
+        "P0-16"
+      ]
+    },
+    {
+      "id": "P2-7",
+      "priority": "P2",
+      "title": "Implement LegacyRunner::execute() with actual binary invocation",
+      "description": "Implement LegacyRunner::execute() method with actual binary invocation in runners/ directory",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify LegacyRunner struct is properly implemented",
+        "AddUnitTest: verify execute() method invokes binary correctly",
+        "AddIntegrationTest: verify LegacyRunner integrates with task execution flow"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test legacy_runner",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Implement LegacyRunner::execute() in harness/crates/core/src/runners/",
+      "dependencies": [
+        "P1-1",
+        "P1-2",
+        "P1-3",
+        "P1-4",
+        "P1-5",
+        "P1-6",
+        "P1-7",
+        "P1-8"
+      ]
+    },
+    {
+      "id": "P2-8",
+      "priority": "P2",
+      "title": "Implement RustRunner::execute() with actual binary invocation",
+      "description": "Implement RustRunner::execute() method with actual binary invocation in runners/ directory",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify RustRunner struct is properly implemented",
+        "AddUnitTest: verify execute() method invokes binary correctly",
+        "AddIntegrationTest: verify RustRunner integrates with task execution flow"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core --test rust_runner",
+        "cargo clippy -p opencode-core -- -D warnings"
+      ],
+      "impl_notes": "Implement RustRunner::execute() in harness/crates/core/src/runners/",
+      "dependencies": [
+        "P1-1",
+        "P1-2",
+        "P1-3",
+        "P1-4",
+        "P1-5",
+        "P1-6",
+        "P1-7",
+        "P1-8"
+      ]
+    }
+  ]
+}
