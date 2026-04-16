@@ -1,8 +1,12 @@
+pub mod artifact_persister;
 pub mod binary_resolver;
 pub mod differential_runner;
 pub mod legacy_runner;
 pub mod rust_runner;
 
+pub use artifact_persister::{
+    ArtifactDiff, ArtifactPersister, DiffReport, MetadataJson, RunnerType,
+};
 pub use binary_resolver::BinaryResolver;
 pub use differential_runner::{DifferentialResult, DifferentialRunner};
 pub use legacy_runner::{LegacyRunner, LegacyRunnerResult};
