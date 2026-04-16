@@ -3,7 +3,7 @@ pub mod error;
 pub mod loaders;
 pub mod types;
 
-pub use loaders::{FixtureLoader, TaskSchemaValidator};
+pub use loaders::{FixtureLoader, TaskLoader, TaskSchemaValidator};
 pub use types::entry_mode::EntryMode;
 pub use types::fixture::{FixtureFile, FixtureProject, ResetStrategy, Workspace, WorkspacePolicy};
 pub use types::report::{Report, TestCase, TestCaseStatus};

@@ -502,7 +502,7 @@
       "priority": "P0",
       "title": "Create 3-5 additional high-value smoke tasks per category",
       "description": "Create 3-5 additional smoke test tasks for each category (CLI, workspace, session, permissions, api) in tasks/*/ directory",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify all new smoke tasks in tasks/cli/ parse correctly",
         "AddIntegrationTest: verify all new smoke tasks in tasks/workspace/ parse correctly",
@@ -525,7 +525,7 @@
       "priority": "P1",
       "title": "Implement TaskLoader trait",
       "description": "Implement TaskLoader trait in loaders/task_loader.rs with load_from_dir and load_single methods",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify TaskLoader trait is properly defined with Send + Sync bounds",
         "AddUnitTest: verify load_from_dir() method loads all tasks from directory correctly",
