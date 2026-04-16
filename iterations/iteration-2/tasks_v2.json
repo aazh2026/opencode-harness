@@ -547,7 +547,7 @@
       "priority": "P1",
       "title": "Update module exports",
       "description": "Update module exports in types/mod.rs and loaders/mod.rs to export all new types and traits",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify types/mod.rs exports all new enums and structs",
         "AddUnitTest: verify loaders/mod.rs exports all new traits",
@@ -574,7 +574,7 @@
       "priority": "P1",
       "title": "Implement task_schema_tests",
       "description": "Implement comprehensive tests in tests/task_schema_tests.rs for task schema validation",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify Task schema validation for all required fields",
         "AddUnitTest: verify Task schema validation fails on missing required fields",
