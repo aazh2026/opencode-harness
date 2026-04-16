@@ -1,0 +1,33 @@
+id: SMOKE-API-001
+title: API health endpoint returns status
+category: smoke
+fixture_project: fixtures/projects/api-project
+description: Verify that opencode API health endpoint returns healthy status
+expected_outcome: API health check returns status with healthy response
+preconditions:
+  - opencode API server running
+entry_mode: API
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - api
+    - health
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "healthy"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Critical
+tags:
+  - smoke
+  - api
+  - health
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked
