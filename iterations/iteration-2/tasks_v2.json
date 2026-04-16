@@ -603,7 +603,7 @@
       "priority": "P1",
       "title": "Implement fixture_loader_tests",
       "description": "Implement comprehensive tests in tests/fixture_loader_tests.rs for fixture loading",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify FixtureLoader can load cli-basic fixture",
         "AddUnitTest: verify FixtureLoader can load api-project fixture",
