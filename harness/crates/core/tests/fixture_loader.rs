@@ -1,6 +1,8 @@
+use opencode_core::loaders::fixture_loader::DefaultFixtureLoader;
 use opencode_core::loaders::FixtureLoader;
 use opencode_core::types::fixture::{FixtureFile, FixtureProject, ResetStrategy, WorkspacePolicy};
 use opencode_core::types::workspace::Workspace;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -148,11 +150,79 @@ executable = false
     .unwrap();
 }
 
+fn get_fixtures_path() -> PathBuf {
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let core_path = PathBuf::from(manifest_dir);
+    let harness_path = core_path
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap();
+    harness_path.join("harness/fixtures/projects")
+}
+
+#[test]
+fn test_cli_basic_fixture_parses_correctly() {
+    let fixtures_path = get_fixtures_path();
+    let loader = DefaultFixtureLoader::new(fixtures_path);
+    let result = loader.load("cli-basic");
+    assert!(
+        result.is_ok(),
+        "Failed to load cli-basic fixture: {:?}",
+        result.err()
+    );
+    let fixture = result.unwrap();
+    assert_eq!(fixture.name, "cli-basic");
+    assert!(!fixture.description.is_empty());
+    assert_eq!(fixture.reset_strategy, ResetStrategy::CleanClone);
+}
+
+#[test]
+fn test_cli_basic_fixture_scripts_are_executable() {
+    let fixtures_path = get_fixtures_path();
+    let setup_path = fixtures_path.join("cli-basic/scripts/setup.sh");
+    let teardown_path = fixtures_path.join("cli-basic/scripts/teardown.sh");
+    assert!(setup_path.exists(), "setup.sh should exist");
+    assert!(teardown_path.exists(), "teardown.sh should exist");
+
+    #[cfg(unix)]
+    {
+        let setup_meta = std::fs::metadata(&setup_path).unwrap();
+        let teardown_meta = std::fs::metadata(&teardown_path).unwrap();
+        let setup_mode = setup_meta.permissions().mode();
+        let teardown_mode = teardown_meta.permissions().mode();
+        assert!(setup_mode & 0o111 != 0, "setup.sh should be executable");
+        assert!(
+            teardown_mode & 0o111 != 0,
+            "teardown.sh should be executable"
+        );
+    }
+}
+
+#[test]
+fn test_cli_basic_fixture_workspace_init_and_cleanup() {
+    let fixtures_path = get_fixtures_path();
+    let loader = DefaultFixtureLoader::new(fixtures_path);
+    let fixture = loader.load("cli-basic").unwrap();
+    let workspace = loader.init_workspace(&fixture);
+    assert!(
+        workspace.is_ok(),
+        "Failed to init workspace: {:?}",
+        workspace.err()
+    );
+    let ws = workspace.unwrap();
+    assert!(ws.path.exists(), "Workspace path should exist");
+    assert_eq!(ws.fixture_name, "cli-basic");
+    loader.cleanup_workspace(&ws).unwrap();
+}
+
 #[test]
 fn test_fixture_loader_trait_is_send_and_sync() {
     fn assert_send_sync<T: Send + Sync>() {}
     let temp_dir = TempDir::new().unwrap();
-    let loader = TestFixtureLoader::new(temp_dir.path().to_path_buf());
+    let _loader = TestFixtureLoader::new(temp_dir.path().to_path_buf());
     assert_send_sync::<TestFixtureLoader>();
 }
 

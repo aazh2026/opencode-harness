@@ -322,7 +322,7 @@
       "priority": "P0",
       "title": "Create cli-basic fixture project",
       "description": "Create fixture project at fixtures/projects/cli-basic/ with harness.toml and scripts for basic CLI testing",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddIntegrationTest: verify fixtures/projects/cli-basic/harness.toml parses correctly",
         "AddIntegrationTest: verify fixture scripts are executable",

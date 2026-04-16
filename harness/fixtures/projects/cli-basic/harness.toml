@@ -1,0 +1,11 @@
+name = "cli-basic"
+description = "Basic CLI smoke test fixture for opencode"
+
+reset_strategy = "clean_clone"
+setup_script = "scripts/setup.sh"
+teardown_script = "scripts/teardown.sh"
+
+[workspace_policy]
+allow_dirty_git = false
+allow_network = false
+preserve_on_failure = false
