@@ -246,7 +246,7 @@
       "priority": "P0",
       "title": "Implement FixtureLoader trait",
       "description": "Implement FixtureLoader trait in loaders/fixture_loader.rs with load, init_workspace, cleanup_workspace methods",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify FixtureLoader trait is properly defined with Send + Sync bounds",
         "AddUnitTest: verify load() method loads FixtureProject correctly",

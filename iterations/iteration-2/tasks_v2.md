@@ -131,7 +131,7 @@ Extended Task struct with all required fields:
 - on_missing_dependency: OnMissingDependency
 - expected_outputs: Option<TaskOutputs>
 
-### P0-12: TaskSchemaValidator
+### P0-12: ✅ Done
 
 **File:** `harness/crates/core/src/loaders/task_validator.rs`
 
