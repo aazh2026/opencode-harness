@@ -246,7 +246,7 @@
       "priority": "P0",
       "title": "Implement FixtureLoader trait",
       "description": "Implement FixtureLoader trait in loaders/fixture_loader.rs with load, init_workspace, cleanup_workspace methods",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify FixtureLoader trait is properly defined with Send + Sync bounds",
         "AddUnitTest: verify load() method loads FixtureProject correctly",
@@ -267,7 +267,7 @@
       "priority": "P0",
       "title": "Add WorkspacePolicy struct to Fixture schema",
       "description": "Add WorkspacePolicy struct with fields: allow_dirty_git, allow_network, preserve_on_failure to types/fixture.rs",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify WorkspacePolicy struct can be instantiated with all three fields",
         "AddUnitTest: verify WorkspacePolicy can be serialized/deserialized to/from JSON"

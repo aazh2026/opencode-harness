@@ -142,7 +142,7 @@ pub trait TaskSchemaValidator: Send + Sync {
 }
 ```
 
-### P0-13: FixtureLoader
+### P0-13: ✅ Done
 
 **File:** `harness/crates/core/src/loaders/fixture_loader.rs`
 
