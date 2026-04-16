@@ -1,7 +1,9 @@
 pub mod config;
 pub mod error;
+pub mod loaders;
 pub mod types;
 
+pub use loaders::TaskSchemaValidator;
 pub use types::entry_mode::EntryMode;
 pub use types::report::{Report, TestCase, TestCaseStatus};
 pub use types::task::Task;
