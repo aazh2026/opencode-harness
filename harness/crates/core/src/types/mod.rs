@@ -5,5 +5,6 @@ pub mod failure_classification;
 pub mod path_convention;
 pub mod provider_mode;
 pub mod report;
+pub mod severity;
 pub mod task;
 pub mod task_status;
