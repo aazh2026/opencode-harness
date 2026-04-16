@@ -746,7 +746,7 @@
       "priority": "P2",
       "title": "Implement DifferentialRunner",
       "description": "Implement DifferentialRunner in runners/differential_runner.rs for running differential tests",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify DifferentialRunner struct is properly implemented",
         "AddUnitTest: verify execute() method runs differential comparison correctly",
@@ -773,7 +773,7 @@
       "priority": "P2",
       "title": "Implement Normalizer trait with actual logic",
       "description": "Implement Normalizer trait with actual normalization logic in normalizers/ directory",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify Normalizer trait is properly defined",
         "AddUnitTest: verify normalize() method correctly normalizes outputs",
