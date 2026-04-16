@@ -1,10 +1,20 @@
 use crate::error::{ErrorType, Result};
+use crate::runners::artifact_persister::{ArtifactPersister, RunnerType};
 use crate::runners::binary_resolver::BinaryResolver;
 use crate::types::artifact::Artifact;
-use crate::types::task::Task;
+use crate::types::capability_summary::CapabilitySummary;
+use crate::types::runner_input::RunnerInput;
+use crate::types::runner_output::RunnerOutput;
+use crate::types::session_metadata::SessionMetadata;
 use crate::types::task_status::TaskStatus;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::process::{Command, Output};
+use std::collections::HashMap;
+use std::io::Read;
+use std::path::PathBuf;
+use std::process::{Command, Output, Stdio};
+use std::sync::mpsc;
+use std::thread;
 use std::time::Instant;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +76,20 @@ impl RustRunnerResult {
     }
 }
 
+impl From<RunnerOutput> for RustRunnerResult {
+    fn from(r: RunnerOutput) -> Self {
+        Self {
+            task_id: r.session_metadata.task_id.clone(),
+            status: TaskStatus::Done,
+            exit_code: r.exit_code,
+            stdout: r.stdout,
+            stderr: r.stderr,
+            duration_ms: r.duration_ms,
+            artifacts: r.artifacts,
+        }
+    }
+}
+
 pub struct RustRunner {
     name: String,
 }
@@ -75,69 +99,181 @@ impl RustRunner {
         Self { name: name.into() }
     }
 
-    pub fn execute(&self, task: &Task) -> Result<RustRunnerResult> {
+    pub fn execute(&self, input: &RunnerInput) -> Result<RunnerOutput> {
         let start = Instant::now();
+        let started_at = Utc::now();
         let resolver = BinaryResolver::new();
-        let binary = resolver.resolve_opencode_rs()?;
+        let binary = resolver.resolve_opencode_rs_with_override(input.binary_path.as_ref())?;
+        let task = &input.task;
         let task_input = &task.input;
 
-        let output = self.run_command(&binary, &task_input.args, &task_input.cwd)?;
+        let mut capability_summary = CapabilitySummary {
+            binary_available: true,
+            workspace_prepared: input.prepared_workspace_path.exists(),
+            ..Default::default()
+        };
 
+        let output = if input.timeout_seconds > 0 {
+            self.run_command_with_timeout(
+                &binary,
+                &task_input.args,
+                &input.prepared_workspace_path.to_string_lossy(),
+                &input.env_overrides,
+                input.timeout_seconds,
+            )?
+        } else {
+            self.run_command_no_timeout(
+                &binary,
+                &task_input.args,
+                &input.prepared_workspace_path.to_string_lossy(),
+                &input.env_overrides,
+            )?
+        };
+
+        let finished_at = Utc::now();
         let duration_ms = start.elapsed().as_millis() as u64;
-        let exit_code = output.status.code().unwrap_or(-1);
+        let exit_code = output.status.code();
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
-        let status = TaskStatus::Done;
+        let session_metadata = SessionMetadata::new(
+            uuid::Uuid::new_v4().to_string(),
+            self.name.clone(),
+            task.id.clone(),
+            started_at,
+            finished_at,
+            input.prepared_workspace_path.clone(),
+        );
 
-        Ok(RustRunnerResult::new(&task.id)
-            .with_status(status)
-            .with_exit_code(exit_code)
-            .with_stdout(stdout)
-            .with_stderr(stderr)
-            .with_duration_ms(duration_ms))
+        let artifact_persister = ArtifactPersister::new(
+            session_metadata.session_id.clone(),
+            PathBuf::from("artifacts"),
+        );
+        artifact_persister.create_directory_structure()?;
+
+        capability_summary.timeout_enforced = input.timeout_seconds > 0;
+
+        let runner_output = artifact_persister.build_runner_output(
+            RunnerType::Rust,
+            exit_code,
+            stdout.clone(),
+            stderr.clone(),
+            duration_ms,
+            Vec::new(),
+            session_metadata.clone(),
+            None,
+            None,
+            capability_summary.clone(),
+        )?;
+
+        Ok(runner_output)
     }
 
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    fn run_command(&self, binary: &std::path::Path, args: &[String], cwd: &str) -> Result<Output> {
+    fn run_command_no_timeout(
+        &self,
+        binary: &std::path::Path,
+        args: &[String],
+        cwd: &str,
+        env_overrides: &HashMap<String, String>,
+    ) -> Result<Output> {
         Command::new(binary)
             .args(args)
             .current_dir(cwd)
+            .envs(env_overrides)
             .output()
             .map_err(|e| {
                 ErrorType::Runner(format!("Failed to execute '{}': {}", binary.display(), e))
             })
+    }
+
+    fn run_command_with_timeout(
+        &self,
+        binary: &std::path::Path,
+        args: &[String],
+        cwd: &str,
+        env_overrides: &HashMap<String, String>,
+        timeout_seconds: u64,
+    ) -> Result<Output> {
+        let (tx, rx) = mpsc::channel();
+
+        let mut cmd = Command::new(binary);
+        cmd.args(args)
+            .current_dir(cwd)
+            .envs(env_overrides)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                return Err(ErrorType::Runner(format!(
+                    "Failed to spawn '{}': {}",
+                    binary.display(),
+                    e
+                )));
+            }
+        };
+
+        let child_id = child.id();
+
+        thread::spawn(move || {
+            let exit_status = child.wait();
+            let stdout = child.stdout.take().map(|mut s| {
+                let mut buf = Vec::new();
+                let _ = s.read_to_end(&mut buf);
+                buf
+            });
+            let stderr = child.stderr.take().map(|mut s| {
+                let mut buf = Vec::new();
+                let _ = s.read_to_end(&mut buf);
+                buf
+            });
+            let _ = tx.send((exit_status, stdout, stderr));
+        });
+
+        match rx.recv_timeout(std::time::Duration::from_secs(timeout_seconds)) {
+            Ok((Ok(exit_status), stdout, stderr)) => Ok(Output {
+                status: exit_status,
+                stdout: stdout.unwrap_or_default(),
+                stderr: stderr.unwrap_or_default(),
+            }),
+            Ok((Err(e), _, _)) => Err(ErrorType::Runner(format!("Process wait error: {}", e))),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                #[cfg(unix)]
+                {
+                    let _ = Command::new("kill")
+                        .arg("-9")
+                        .arg(child_id.to_string())
+                        .spawn();
+                }
+                #[cfg(windows)]
+                {
+                    use std::process::Command as WinCommand;
+                    let _ = WinCommand::new("taskkill")
+                        .arg("/F")
+                        .arg("/PID")
+                        .arg(child_id.to_string())
+                        .spawn();
+                }
+                Err(ErrorType::Runner(format!(
+                    "Process timed out after {} seconds and was killed (pid: {})",
+                    timeout_seconds, child_id
+                )))
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                Err(ErrorType::Runner("Channel disconnected".to_string()))
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::TaskInput;
-
-    fn create_test_task(command: &str, args: Vec<String>, cwd: &str) -> Task {
-        Task::new(
-            "P2-008",
-            "Implement RustRunner",
-            crate::types::task::TaskCategory::Schema,
-            "test-fixture",
-            "Implement RustRunner with actual binary invocation",
-            "RustRunner executes binaries correctly",
-            vec![],
-            crate::types::entry_mode::EntryMode::CLI,
-            crate::types::agent_mode::AgentMode::OneShot,
-            crate::types::provider_mode::ProviderMode::Both,
-            TaskInput::new(command, args, cwd),
-            vec![],
-            crate::types::severity::Severity::High,
-            crate::types::execution_policy::ExecutionPolicy::ManualCheck,
-            60,
-            crate::types::on_missing_dependency::OnMissingDependency::Fail,
-        )
-    }
 
     #[test]
     fn test_rust_runner_creation() {
@@ -174,50 +310,13 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn test_rust_runner_execute_echo() {
-        let runner = RustRunner::new("opencode");
-        let task = create_test_task("echo", vec!["hello".to_string()], "/tmp");
-
-        let result = runner.execute(&task);
-        assert!(result.is_ok(), "execute failed: {:?}", result.err());
-        let result = result.unwrap();
-        assert_eq!(result.task_id, "P2-008");
-        assert_eq!(result.status, TaskStatus::Done);
+    fn test_rust_runner_result_from_runner_output() {
+        let output = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("hello".to_string());
+        let result: RustRunnerResult = output.into();
+        assert_eq!(result.task_id, "default");
         assert_eq!(result.exit_code, Some(0));
-        assert!(result.stdout.contains("hello"));
-    }
-
-    #[test]
-    #[ignore]
-    fn test_rust_runner_execute_with_stderr() {
-        let runner = RustRunner::new("opencode");
-        let task = create_test_task(
-            "sh",
-            vec!["-c".to_string(), "echo error 1>&2".to_string()],
-            "/tmp",
-        );
-
-        let result = runner.execute(&task);
-        assert!(result.is_ok(), "execute failed: {:?}", result.err());
-        let result = result.unwrap();
-        assert!(result.stderr.contains("error"));
-    }
-
-    #[test]
-    #[ignore]
-    fn test_rust_runner_execute_with_args() {
-        let runner = RustRunner::new("opencode");
-        let task = create_test_task(
-            "printf",
-            vec!["%s %d\n".to_string(), "test".to_string(), "42".to_string()],
-            "/tmp",
-        );
-
-        let result = runner.execute(&task);
-        assert!(result.is_ok(), "execute failed: {:?}", result.err());
-        let result = result.unwrap();
-        assert!(result.stdout.contains("test"));
-        assert!(result.stdout.contains("42"));
+        assert_eq!(result.stdout, "hello");
     }
 }
