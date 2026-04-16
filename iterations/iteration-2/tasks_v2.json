@@ -800,7 +800,7 @@
       "priority": "P2",
       "title": "Implement Comparator trait with actual logic",
       "description": "Implement Comparator trait with actual comparison logic in comparators/ directory",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify Comparator trait is properly defined",
         "AddUnitTest: verify compare() method correctly compares outputs",
@@ -827,7 +827,7 @@
       "priority": "P2",
       "title": "Implement Verifier trait with actual logic",
       "description": "Implement Verifier trait with actual verification logic in verifiers/ directory",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify Verifier trait is properly defined",
         "AddUnitTest: verify verify() method correctly verifies assertions",
