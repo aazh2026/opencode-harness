@@ -1,9 +1,11 @@
 pub mod config;
 pub mod error;
 pub mod loaders;
+pub mod runners;
 pub mod types;
 
 pub use loaders::{FixtureLoader, TaskLoader, TaskSchemaValidator};
+pub use runners::{DifferentialResult, DifferentialRunner};
 pub use types::entry_mode::EntryMode;
 pub use types::fixture::{FixtureFile, FixtureProject, ResetStrategy, Workspace, WorkspacePolicy};
 pub use types::report::{Report, TestCase, TestCaseStatus};

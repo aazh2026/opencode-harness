@@ -723,7 +723,7 @@
       "priority": "P1",
       "title": "Verify cargo test passes",
       "description": "Verify that cargo test passes after P1-3, P1-4, P1-5 are implemented",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "RunTestSuite: ensure cargo test passes all tests",
         "AddRegressionTest: ensure all task_schema_tests pass",
@@ -746,7 +746,7 @@
       "priority": "P2",
       "title": "Implement DifferentialRunner",
       "description": "Implement DifferentialRunner in runners/differential_runner.rs for running differential tests",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify DifferentialRunner struct is properly implemented",
         "AddUnitTest: verify execute() method runs differential comparison correctly",
