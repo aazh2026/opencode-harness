@@ -1,0 +1,32 @@
+id: SMOKE-PERM-001
+title: Permission prompt appears when required
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode displays a permission prompt when attempting to access protected resources
+expected_outcome: Permission prompt appears when trying to read a protected path
+preconditions:
+  - opencode binary exists
+entry_mode: Permissions
+agent_mode: Interactive
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - file
+    - read
+    - /protected/path
+  cwd: /project
+expected_assertions:
+  - type: permission_prompt_seen
+    value: "Allow access?"
+allowed_variance:
+  exit_code:
+    - 1
+severity: Critical
+tags:
+  - smoke
+  - permissions
+  - prompt
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

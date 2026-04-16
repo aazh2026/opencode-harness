@@ -442,7 +442,7 @@
       "priority": "P0",
       "title": "Create SMOKE-SESSION-001 (Session start)",
       "description": "Create smoke test task for session start in tasks/session/SMOKE-SESSION-001.yaml",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify tasks/session/SMOKE-SESSION-001.yaml parses correctly",
         "AddUnitTest: verify TaskLoader can load SMOKE-SESSION-001 task",
@@ -462,7 +462,7 @@
       "priority": "P0",
       "title": "Create SMOKE-PERM-001 (Permission prompt)",
       "description": "Create smoke test task for permission prompt in tasks/permissions/SMOKE-PERM-001.yaml",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddIntegrationTest: verify tasks/permissions/SMOKE-PERM-001.yaml parses correctly",
         "AddUnitTest: verify TaskLoader can load SMOKE-PERM-001 task",
