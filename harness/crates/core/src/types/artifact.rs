@@ -11,7 +11,7 @@ pub enum ArtifactKind {
     Stderr,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Artifact {
     pub path: String,
     pub kind: ArtifactKind,
