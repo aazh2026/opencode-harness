@@ -16,3 +16,25 @@ pub mod task_input;
 pub mod task_outputs;
 pub mod task_status;
 pub mod workspace;
+
+pub use agent_mode::AgentMode;
+pub use allowed_variance::{AllowedVariance, TimingVariance};
+pub use assertion::AssertionType;
+pub use entry_mode::EntryMode;
+pub use environment::{DefaultEnvironmentProbe, EnvironmentInfo, EnvironmentProbe};
+pub use execution_policy::ExecutionPolicy;
+pub use failure_classification::FailureClassification;
+pub use fixture::{
+    ConfigFormat, FixtureConfig, FixtureFile, FixtureProject, ResetStrategy, Transcript,
+    TranscriptType, Workspace as FixtureWorkspace, WorkspacePolicy,
+};
+pub use on_missing_dependency::OnMissingDependency;
+pub use path_convention::PathConvention;
+pub use provider_mode::ProviderMode;
+pub use report::{Report, TestCase, TestCaseStatus};
+pub use severity::Severity;
+pub use task::{Task, TaskCategory};
+pub use task_input::TaskInput;
+pub use task_outputs::TaskOutputs;
+pub use task_status::TaskStatus;
+pub use workspace::Workspace;

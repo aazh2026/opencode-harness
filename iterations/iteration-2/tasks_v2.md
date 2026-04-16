@@ -49,7 +49,7 @@
 | P1-3 | Implement task_schema_tests | tests/task_schema_tests.rs | TODO | P0-12, P0-19 through P0-26 |
 | P1-4 | Implement fixture_loader_tests | tests/fixture_loader_tests.rs | TODO | P0-13, P0-17, P0-18 |
 | P1-5 | Implement smoke_task_loading_tests | tests/smoke_task_loading_tests.rs | ✅ Done | P1-1, P0-19 through P0-26 |
-| P1-6 | Update types/mod.rs exports | types/mod.rs | TODO | All P0 type tasks |
+| P1-6 | Update types/mod.rs exports | types/mod.rs | ✅ Done | All P0 type tasks |
 | P1-7 | Verify `cargo build --package core` passes | CI | TODO | All P0 and P1 items |
 | P1-8 | Verify `cargo test` passes | CI | TODO | P1-3, P1-4, P1-5 |
 

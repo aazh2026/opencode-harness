@@ -658,7 +658,7 @@
       "priority": "P1",
       "title": "Update types/mod.rs exports",
       "description": "Update types/mod.rs to export all new enums, structs from P0 type tasks",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify all P0 type exports are available from types module",
         "AddIntegrationTest: verify types compile and exports are correct"
