@@ -301,7 +301,7 @@
       "priority": "P0",
       "title": "Complete FixtureProject struct with all missing fields",
       "description": "Complete FixtureProject struct in types/fixture.rs with WorkspacePolicy and ResetStrategy integration",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify FixtureProject struct has all required fields including WorkspacePolicy and ResetStrategy",
         "AddUnitTest: verify FixtureProject can be serialized/deserialized to/from JSON",

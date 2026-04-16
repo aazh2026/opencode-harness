@@ -60,6 +60,8 @@ impl DefaultFixtureLoader {
             setup_script,
             teardown_script,
             files,
+            configs: Vec::new(),
+            transcripts: Vec::new(),
         })
     }
 

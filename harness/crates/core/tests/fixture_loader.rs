@@ -76,6 +76,8 @@ impl FixtureLoader for TestFixtureLoader {
             setup_script: None,
             teardown_script: None,
             files,
+            configs: Vec::new(),
+            transcripts: Vec::new(),
         })
     }
 
