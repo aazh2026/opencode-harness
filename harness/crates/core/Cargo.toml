@@ -17,6 +17,7 @@ regex.workspace = true
 chrono.workspace = true
 uuid.workspace = true
 tempfile = "3"
+comparators = { path = "../../comparators" }
 
 [dev-dependencies]
 serde_yaml = "0.9"

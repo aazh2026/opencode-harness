@@ -773,7 +773,7 @@
       "priority": "P2",
       "title": "Implement Normalizer trait with actual logic",
       "description": "Implement Normalizer trait with actual normalization logic in normalizers/ directory",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify Normalizer trait is properly defined",
         "AddUnitTest: verify normalize() method correctly normalizes outputs",
@@ -800,7 +800,7 @@
       "priority": "P2",
       "title": "Implement Comparator trait with actual logic",
       "description": "Implement Comparator trait with actual comparison logic in comparators/ directory",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify Comparator trait is properly defined",
         "AddUnitTest: verify compare() method correctly compares outputs",
