@@ -422,7 +422,7 @@
       "priority": "P0",
       "title": "Create SMOKE-WS-002 (Workspace cleanup)",
       "description": "Create smoke test task for workspace cleanup in tasks/workspace/SMOKE-WS-002.yaml",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify tasks/workspace/SMOKE-WS-002.yaml parses correctly",
         "AddUnitTest: verify TaskLoader can load SMOKE-WS-002 task",
@@ -442,7 +442,7 @@
       "priority": "P0",
       "title": "Create SMOKE-SESSION-001 (Session start)",
       "description": "Create smoke test task for session start in tasks/session/SMOKE-SESSION-001.yaml",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddIntegrationTest: verify tasks/session/SMOKE-SESSION-001.yaml parses correctly",
         "AddUnitTest: verify TaskLoader can load SMOKE-SESSION-001 task",

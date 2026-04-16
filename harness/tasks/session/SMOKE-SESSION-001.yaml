@@ -1,0 +1,33 @@
+id: SMOKE-SESSION-001
+title: Session start creates session state
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode session start creates a session state correctly
+expected_outcome: Session start command exits with code 0 and displays Session started message
+preconditions:
+  - opencode binary exists
+entry_mode: Session
+agent_mode: Interactive
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - session
+    - start
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "Session started"
+allowed_variance:
+  exit_code:
+    - 0
+severity: High
+tags:
+  - smoke
+  - session
+  - start
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Fail
