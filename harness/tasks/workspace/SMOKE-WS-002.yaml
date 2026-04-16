@@ -1,0 +1,32 @@
+id: SMOKE-WS-002
+title: Workspace cleanup removes runtime artifacts
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode workspace cleanup removes runtime artifacts correctly
+expected_outcome: Workspace cleanup command exits with code 0 and removes runtime artifacts without affecting other files
+preconditions:
+  - opencode binary exists
+entry_mode: Workspace
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - workspace
+    - cleanup
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: no_extra_files_changed
+allowed_variance:
+  exit_code:
+    - 0
+severity: Medium
+tags:
+  - smoke
+  - workspace
+  - cleanup
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Warn
