@@ -12,4 +12,5 @@ pub mod report;
 pub mod severity;
 pub mod task;
 pub mod task_input;
+pub mod task_outputs;
 pub mod task_status;
