@@ -525,7 +525,7 @@
       "priority": "P1",
       "title": "Implement TaskLoader trait",
       "description": "Implement TaskLoader trait in loaders/task_loader.rs with load_from_dir and load_single methods",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify TaskLoader trait is properly defined with Send + Sync bounds",
         "AddUnitTest: verify load_from_dir() method loads all tasks from directory correctly",
@@ -547,7 +547,7 @@
       "priority": "P1",
       "title": "Update module exports",
       "description": "Update module exports in types/mod.rs and loaders/mod.rs to export all new types and traits",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify types/mod.rs exports all new enums and structs",
         "AddUnitTest: verify loaders/mod.rs exports all new traits",
