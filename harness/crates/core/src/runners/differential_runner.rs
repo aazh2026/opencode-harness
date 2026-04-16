@@ -4,7 +4,10 @@ use crate::runners::legacy_runner::{LegacyRunner, LegacyRunnerResult};
 use crate::runners::rust_runner::{RustRunner, RustRunnerResult};
 use crate::types::artifact::Artifact;
 use crate::types::parity_verdict::{DiffCategory, ParityVerdict};
+use crate::types::runner_input::RunnerInput;
+use crate::types::runner_output::RunnerOutput;
 use crate::types::task::Task;
+use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;
 
@@ -18,22 +21,27 @@ impl<L: TaskLoader> DifferentialRunner<L> {
     }
 
     pub fn execute(&self, task: &Task) -> Result<DifferentialResult> {
+        let runner_input = self.task_to_runner_input(task);
+        self.execute_from_input(&runner_input)
+    }
+
+    pub fn execute_from_input(&self, input: &RunnerInput) -> Result<DifferentialResult> {
         let start = Instant::now();
         let legacy_runner = LegacyRunner::new("legacy");
         let rust_runner = RustRunner::new("rust");
 
-        let legacy_result = legacy_runner.execute(task);
-        let rust_result = rust_runner.execute(task);
+        let legacy_result = legacy_runner.execute(input);
+        let rust_result = rust_runner.execute(input);
 
-        let verdict = self.determine_verdict(&legacy_result, &rust_result);
+        let verdict = self.determine_verdict_from_outputs(&legacy_result, &rust_result);
 
         let duration_ms = start.elapsed().as_millis() as u64;
 
         match (legacy_result, rust_result) {
             (Ok(lr), Ok(rr)) => Ok(DifferentialResult {
-                task_id: task.id.clone(),
+                task_id: input.task.id.clone(),
                 legacy_result: Some(lr.into()),
-                rust_result: Some(rr),
+                rust_result: Some(rr.into()),
                 verdict: verdict.clone(),
                 duration_ms,
             }),
@@ -41,9 +49,9 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                 let runner = "LegacyRunner".to_string();
                 let reason = e.to_string();
                 Ok(DifferentialResult {
-                    task_id: task.id.clone(),
+                    task_id: input.task.id.clone(),
                     legacy_result: None,
-                    rust_result: Some(rr),
+                    rust_result: Some(rr.into()),
                     verdict: ParityVerdict::Error { runner, reason },
                     duration_ms,
                 })
@@ -52,7 +60,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                 let runner = "RustRunner".to_string();
                 let reason = e.to_string();
                 Ok(DifferentialResult {
-                    task_id: task.id.clone(),
+                    task_id: input.task.id.clone(),
                     legacy_result: Some(lr.into()),
                     rust_result: None,
                     verdict: ParityVerdict::Error { runner, reason },
@@ -60,7 +68,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                 })
             }
             (Err(e1), Err(e2)) => Ok(DifferentialResult {
-                task_id: task.id.clone(),
+                task_id: input.task.id.clone(),
                 legacy_result: None,
                 rust_result: None,
                 verdict: ParityVerdict::Error {
@@ -72,10 +80,22 @@ impl<L: TaskLoader> DifferentialRunner<L> {
         }
     }
 
-    fn determine_verdict(
+    fn task_to_runner_input(&self, task: &Task) -> RunnerInput {
+        RunnerInput::new(
+            task.clone(),
+            std::path::PathBuf::from(&task.input.cwd),
+            HashMap::new(),
+            task.timeout_seconds,
+            None,
+            task.provider_mode,
+            crate::types::CaptureOptions::default(),
+        )
+    }
+
+    fn determine_verdict_from_outputs(
         &self,
-        legacy_result: &Result<LegacyRunnerResult>,
-        rust_result: &Result<RustRunnerResult>,
+        legacy_result: &Result<RunnerOutput>,
+        rust_result: &Result<RunnerOutput>,
     ) -> ParityVerdict {
         let (lr, rr) = match (legacy_result, rust_result) {
             (Ok(l), Ok(r)) => (l, r),
@@ -244,6 +264,20 @@ impl From<LegacyRunnerResult> for LegacyExecutionResult {
     }
 }
 
+impl From<RunnerOutput> for LegacyExecutionResult {
+    fn from(r: RunnerOutput) -> Self {
+        Self {
+            task_id: r.session_metadata.task_id.clone(),
+            status: crate::types::TaskStatus::Done,
+            exit_code: r.exit_code,
+            stdout: r.stdout,
+            stderr: r.stderr,
+            duration_ms: r.duration_ms,
+            artifacts: r.artifacts,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -371,6 +405,16 @@ on_missing_dependency: Fail
             .with_stdout("hello".to_string());
         let exec: LegacyExecutionResult = lr.into();
         assert_eq!(exec.task_id, "task-1");
+        assert_eq!(exec.exit_code, Some(0));
+        assert_eq!(exec.stdout, "hello");
+    }
+
+    #[test]
+    fn test_legacy_execution_result_from_runner_output() {
+        let output = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("hello".to_string());
+        let exec: LegacyExecutionResult = output.into();
         assert_eq!(exec.exit_code, Some(0));
         assert_eq!(exec.stdout, "hello");
     }

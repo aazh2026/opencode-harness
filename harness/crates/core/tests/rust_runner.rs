@@ -4,13 +4,16 @@ use opencode_core::types::entry_mode::EntryMode;
 use opencode_core::types::execution_policy::ExecutionPolicy;
 use opencode_core::types::on_missing_dependency::OnMissingDependency;
 use opencode_core::types::provider_mode::ProviderMode;
+use opencode_core::types::runner_input::RunnerInput;
 use opencode_core::types::severity::Severity;
 use opencode_core::types::task::Task;
 use opencode_core::types::TaskCategory;
 use opencode_core::types::TaskInput;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
-fn create_test_task(command: &str, args: Vec<String>, cwd: &str) -> Task {
-    Task::new(
+fn create_test_runner_input(command: &str, args: Vec<String>, cwd: &str) -> RunnerInput {
+    let task = Task::new(
         "P2-008",
         "RustRunner Integration Test",
         TaskCategory::Schema,
@@ -27,6 +30,15 @@ fn create_test_task(command: &str, args: Vec<String>, cwd: &str) -> Task {
         ExecutionPolicy::ManualCheck,
         60,
         OnMissingDependency::Fail,
+    );
+    RunnerInput::new(
+        task,
+        PathBuf::from(cwd),
+        HashMap::new(),
+        60,
+        None,
+        ProviderMode::Both,
+        opencode_core::types::CaptureOptions::default(),
     )
 }
 
@@ -34,11 +46,11 @@ fn create_test_task(command: &str, args: Vec<String>, cwd: &str) -> Task {
 #[ignore]
 fn test_rust_runner_integration_execute_echo() {
     let runner = RustRunner::new("opencode");
-    let task = create_test_task("echo", vec!["integration_test".to_string()], "/tmp");
+    let input = create_test_runner_input("echo", vec!["integration_test".to_string()], "/tmp");
 
-    let result = runner.execute(&task).unwrap();
-    assert_eq!(result.task_id, "P2-008");
-    assert!(result.is_success());
+    let result = runner.execute(&input).unwrap();
+    assert_eq!(result.session_metadata.task_id, "P2-008");
+    assert_eq!(result.exit_code, Some(0));
     assert!(result.stdout.contains("integration_test"));
 }
 
@@ -46,7 +58,7 @@ fn test_rust_runner_integration_execute_echo() {
 #[ignore]
 fn test_rust_runner_integration_execute_with_args() {
     let runner = RustRunner::new("opencode");
-    let task = create_test_task(
+    let input = create_test_runner_input(
         "printf",
         vec![
             "%s %d\n".to_string(),
@@ -56,9 +68,9 @@ fn test_rust_runner_integration_execute_with_args() {
         "/tmp",
     );
 
-    let result = runner.execute(&task).unwrap();
-    assert_eq!(result.task_id, "P2-008");
-    assert!(result.is_success());
+    let result = runner.execute(&input).unwrap();
+    assert_eq!(result.session_metadata.task_id, "P2-008");
+    assert_eq!(result.exit_code, Some(0));
     assert!(result.stdout.contains("hello"));
     assert!(result.stdout.contains("123"));
 }
@@ -67,13 +79,13 @@ fn test_rust_runner_integration_execute_with_args() {
 #[ignore]
 fn test_rust_runner_integration_captures_stderr() {
     let runner = RustRunner::new("opencode");
-    let task = create_test_task(
+    let input = create_test_runner_input(
         "sh",
         vec!["-c".to_string(), "echo error message 1>&2".to_string()],
         "/tmp",
     );
 
-    let result = runner.execute(&task).unwrap();
+    let result = runner.execute(&input).unwrap();
     assert!(result.stderr.contains("error message"));
 }
 
@@ -81,9 +93,9 @@ fn test_rust_runner_integration_captures_stderr() {
 #[ignore]
 fn test_rust_runner_integration_nonexistent_command_fails() {
     let runner = RustRunner::new("opencode");
-    let task = create_test_task("this_command_does_not_exist_xyz", vec![], "/tmp");
+    let input = create_test_runner_input("this_command_does_not_exist_xyz", vec![], "/tmp");
 
-    let result = runner.execute(&task);
+    let result = runner.execute(&input);
     assert!(result.is_err());
 }
 
@@ -92,11 +104,11 @@ fn test_rust_runner_integration_nonexistent_command_fails() {
 fn test_rust_runner_integration_with_task_execution_flow() {
     let runner = RustRunner::new("opencode");
 
-    let task = create_test_task("echo", vec!["flow_test".to_string()], "/tmp");
+    let input = create_test_runner_input("echo", vec!["flow_test".to_string()], "/tmp");
 
-    let result = runner.execute(&task).unwrap();
-    assert_eq!(result.task_id, "P2-008");
-    assert!(result.is_success());
+    let result = runner.execute(&input).unwrap();
+    assert_eq!(result.session_metadata.task_id, "P2-008");
+    assert_eq!(result.exit_code, Some(0));
     assert!(result.stdout.contains("flow_test"));
 }
 

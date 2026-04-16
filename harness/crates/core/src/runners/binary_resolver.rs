@@ -74,6 +74,19 @@ impl BinaryResolver {
     }
 
     pub fn resolve_opencode(&self) -> Result<PathBuf> {
+        self.resolve_opencode_with_override(None)
+    }
+
+    pub fn resolve_opencode_with_override(&self, binary_path: Option<&PathBuf>) -> Result<PathBuf> {
+        if let Some(path) = binary_path {
+            if path.exists() {
+                return Ok(path.clone());
+            }
+            return Err(ErrorType::Runner(format!(
+                "Provided binary_path '{}' does not exist",
+                path.display()
+            )));
+        }
         if let Some(path) = self.check_env("OPENCODE_PATH") {
             return Ok(path);
         }
@@ -81,6 +94,22 @@ impl BinaryResolver {
     }
 
     pub fn resolve_opencode_rs(&self) -> Result<PathBuf> {
+        self.resolve_opencode_rs_with_override(None)
+    }
+
+    pub fn resolve_opencode_rs_with_override(
+        &self,
+        binary_path: Option<&PathBuf>,
+    ) -> Result<PathBuf> {
+        if let Some(path) = binary_path {
+            if path.exists() {
+                return Ok(path.clone());
+            }
+            return Err(ErrorType::Runner(format!(
+                "Provided binary_path '{}' does not exist",
+                path.display()
+            )));
+        }
         if let Some(path) = self.check_env("OPENCODE_RS_PATH") {
             return Ok(path);
         }

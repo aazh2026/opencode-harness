@@ -1,0 +1,12 @@
+{
+  "session_id": "5c0c14da-cb69-48f9-8029-6460b2db6052",
+  "runner_name": "legacy",
+  "task_id": "INTEGRATION-001",
+  "exit_code": 0,
+  "duration_ms": 1291,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 0,
+  "stderr_size_bytes": 117,
+  "side_effects_count": 0,
+  "created_at": "2026-04-16T23:46:17.792269Z"
+}

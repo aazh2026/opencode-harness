@@ -1,0 +1,12 @@
+{
+  "session_id": "aea8ba60-3cfa-49a0-b6dd-babbe4b3e952",
+  "runner_name": "legacy",
+  "task_id": "CLI-FIXTURE-001",
+  "exit_code": 0,
+  "duration_ms": 885,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 0,
+  "stderr_size_bytes": 118,
+  "side_effects_count": 0,
+  "created_at": "2026-04-16T23:46:17.386883Z"
+}
