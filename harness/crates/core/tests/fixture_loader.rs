@@ -285,6 +285,63 @@ fn test_cleanup_workspace_correctly() {
 }
 
 #[test]
+fn test_api_project_fixture_parses_correctly() {
+    let fixtures_path = get_fixtures_path();
+    let loader = DefaultFixtureLoader::new(fixtures_path);
+    let result = loader.load("api-project");
+    assert!(
+        result.is_ok(),
+        "Failed to load api-project fixture: {:?}",
+        result.err()
+    );
+    let fixture = result.unwrap();
+    assert_eq!(fixture.name, "api-project");
+    assert!(!fixture.description.is_empty());
+    assert_eq!(fixture.reset_strategy, ResetStrategy::RestoreFiles);
+    assert!(fixture.workspace_policy.allow_network);
+    assert!(fixture.workspace_policy.preserve_on_failure);
+}
+
+#[test]
+fn test_api_project_fixture_scripts_are_executable() {
+    let fixtures_path = get_fixtures_path();
+    let setup_path = fixtures_path.join("api-project/scripts/setup.sh");
+    let teardown_path = fixtures_path.join("api-project/scripts/teardown.sh");
+    assert!(setup_path.exists(), "setup.sh should exist");
+    assert!(teardown_path.exists(), "teardown.sh should exist");
+
+    #[cfg(unix)]
+    {
+        let setup_meta = std::fs::metadata(&setup_path).unwrap();
+        let teardown_meta = std::fs::metadata(&teardown_path).unwrap();
+        let setup_mode = setup_meta.permissions().mode();
+        let teardown_mode = teardown_meta.permissions().mode();
+        assert!(setup_mode & 0o111 != 0, "setup.sh should be executable");
+        assert!(
+            teardown_mode & 0o111 != 0,
+            "teardown.sh should be executable"
+        );
+    }
+}
+
+#[test]
+fn test_api_project_fixture_workspace_init_and_cleanup() {
+    let fixtures_path = get_fixtures_path();
+    let loader = DefaultFixtureLoader::new(fixtures_path);
+    let fixture = loader.load("api-project").unwrap();
+    let workspace = loader.init_workspace(&fixture);
+    assert!(
+        workspace.is_ok(),
+        "Failed to init workspace: {:?}",
+        workspace.err()
+    );
+    let ws = workspace.unwrap();
+    assert!(ws.path.exists(), "Workspace path should exist");
+    assert_eq!(ws.fixture_name, "api-project");
+    loader.cleanup_workspace(&ws).unwrap();
+}
+
+#[test]
 fn test_workspace_files_copied_correctly() {
     let temp_dir = TempDir::new().unwrap();
     create_test_fixture_dir(&temp_dir, "multi-file-fixture");

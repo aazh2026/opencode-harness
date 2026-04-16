@@ -1,0 +1,11 @@
+name = "api-project"
+description = "API smoke test fixture for opencode"
+
+reset_strategy = "restore_files"
+setup_script = "scripts/setup.sh"
+teardown_script = "scripts/teardown.sh"
+
+[workspace_policy]
+allow_dirty_git = false
+allow_network = true
+preserve_on_failure = true

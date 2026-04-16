@@ -28,7 +28,7 @@
 | P0-15 | Add ResetStrategy enum to Fixture schema | types/fixture.rs | ✅ Done | None |
 | P0-16 | Complete FixtureProject struct with all missing fields | types/fixture.rs | ✅ Done | P0-14, P0-15 |
 | P0-17 | Create cli-basic fixture project with harness.toml and scripts | fixtures/projects/cli-basic/ | TODO | P0-13 |
-| P0-18 | Create api-project fixture project with harness.toml and scripts | fixtures/projects/api-project/ | TODO | P0-13 |
+| P0-18 | Create api-project fixture project with harness.toml and scripts | fixtures/projects/api-project/ | ✅ Done | P0-13 |
 | P0-19 | Create SMOKE-CLI-001 (CLI help command) | tasks/cli/ | TODO | P0-11 |
 | P0-20 | Create SMOKE-CLI-002 (CLI version command) | tasks/cli/ | TODO | P0-11 |
 | P0-21 | Create SMOKE-WS-001 (Workspace init clean) | tasks/workspace/ | TODO | P0-11 |
