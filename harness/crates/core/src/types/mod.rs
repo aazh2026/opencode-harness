@@ -2,6 +2,7 @@ pub mod agent_mode;
 pub mod assertion;
 pub mod entry_mode;
 pub mod environment;
+pub mod execution_policy;
 pub mod failure_classification;
 pub mod path_convention;
 pub mod provider_mode;
