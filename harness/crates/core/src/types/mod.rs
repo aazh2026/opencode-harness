@@ -1,3 +1,4 @@
+pub mod entry_mode;
 pub mod environment;
 pub mod failure_classification;
 pub mod path_convention;

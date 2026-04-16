@@ -423,6 +423,31 @@ v1 优先落地：
 - 多实例
 - 更复杂恢复路径
 
-## 21. 最终结论
+## 21. 迭代可用性里程碑
+
+为了避免长期停留在“骨架完成但无法实际测试”的状态，项目应以可测试能力为核心里程碑推进。
+
+### Milestone A：Iteration 2 结束
+- 完成 task system 与 fixture system
+- 可以稳定描述最小真实对比任务
+- 仍以人工执行双边命令、人工判读为主
+
+### Milestone B：Iteration 3 结束
+- Harness 首次具备**最小自动化真实对比能力**
+- 至少支持少量 CLI contract case 的自动双边执行
+- 至少支持收集双边 stdout/stderr/exit code 与基础 artifacts
+- 至少支持输出最小 parity verdict
+
+### Milestone C：Iteration 4 结束
+- Harness 具备**可持续扩展的自动化对比能力**
+- 可稳定覆盖 CLI / API / contract / side-effect 的基础场景
+- comparator / verifier / normalizer 开始具备实际判定价值
+
+### Milestone D：Iteration 5-6
+- 扩展为 golden / regression / governance / CI gate 完整闭环
+- 持续减少人工检查比例，但不追求完全消灭人工介入
+
+## 22. 最终结论
 
 opencode-harness 应该是一个独立项目，但它在 v1 阶段首先应服务于 opencode-rs 的现实对齐工作，而不是追求过早平台化。它的职责不是替代 opencode 或 opencode-rs 仓内测试，而是作为两者之间的中立能力一致性验证层。它必须以 contract + differential + state machine + side-effect 为主，以少量 smoke E2E 为辅；必须承认环境限制、人工介入与任务状态混乱是现实问题，并将这些现实因素设计进工作流本身。
+
