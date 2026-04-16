@@ -382,7 +382,7 @@
       "priority": "P0",
       "title": "Create SMOKE-CLI-002 (CLI version command)",
       "description": "Create smoke test task for CLI version command in tasks/cli/SMOKE-CLI-002.yaml",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify tasks/cli/SMOKE-CLI-002.yaml parses correctly",
         "AddUnitTest: verify TaskLoader can load SMOKE-CLI-002 task",
@@ -402,7 +402,7 @@
       "priority": "P0",
       "title": "Create SMOKE-WS-001 (Workspace init clean)",
       "description": "Create smoke test task for workspace initialization in tasks/workspace/SMOKE-WS-001.yaml",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify tasks/workspace/SMOKE-WS-001.yaml parses correctly",
         "AddUnitTest: verify TaskLoader can load SMOKE-WS-001 task",

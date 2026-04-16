@@ -1,0 +1,34 @@
+id: SMOKE-WS-001
+title: Workspace initialization creates clean state
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode workspace init creates a clean workspace state correctly
+expected_outcome: Workspace init command exits with code 0 and creates .opencode/workspace.json
+preconditions:
+  - opencode binary exists
+  - git available
+entry_mode: Workspace
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - workspace
+    - init
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: file_changed
+    value: .opencode/workspace.json
+allowed_variance:
+  exit_code:
+    - 0
+severity: High
+tags:
+  - smoke
+  - workspace
+  - init
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Warn
