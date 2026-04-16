@@ -1,0 +1,34 @@
+id: SMOKE-CLI-003
+title: CLI subcommand help displays subcommand usage
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode <subcommand> --help displays subcommand help correctly
+expected_outcome: Subcommand help exits with code 0 and displays subcommand usage
+preconditions:
+  - opencode binary exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - workspace
+    - --help
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "workspace"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Medium
+tags:
+  - smoke
+  - cli
+  - help
+  - subcommand
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Fail

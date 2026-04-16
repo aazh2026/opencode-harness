@@ -1,0 +1,33 @@
+id: SMOKE-CLI-005
+title: CLI config show command displays configuration
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode config show displays current configuration
+expected_outcome: Config show exits with code 0 and displays configuration
+preconditions:
+  - opencode binary exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - config
+    - show
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "config"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Medium
+tags:
+  - smoke
+  - cli
+  - config
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Warn

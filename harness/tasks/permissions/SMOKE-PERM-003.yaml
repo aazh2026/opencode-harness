@@ -1,0 +1,34 @@
+id: SMOKE-PERM-003
+title: Permission grant allows access to protected resource
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode grants permission to access protected resources after authorization
+expected_outcome: Permission grant exits with code 0 and allows subsequent access
+preconditions:
+  - opencode binary exists
+entry_mode: Permissions
+agent_mode: Interactive
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - permissions
+    - grant
+    - /protected/path
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "granted"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Critical
+tags:
+  - smoke
+  - permissions
+  - grant
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

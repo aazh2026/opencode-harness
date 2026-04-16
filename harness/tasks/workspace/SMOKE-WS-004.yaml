@@ -1,0 +1,31 @@
+id: SMOKE-WS-004
+title: Workspace list shows all workspaces
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode workspace list shows all available workspaces
+expected_outcome: Workspace list exits with code 0 and lists workspaces
+preconditions:
+  - opencode binary exists
+entry_mode: Workspace
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - workspace
+    - list
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+allowed_variance:
+  exit_code:
+    - 0
+severity: Low
+tags:
+  - smoke
+  - workspace
+  - list
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Warn

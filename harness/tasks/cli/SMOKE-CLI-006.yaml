@@ -1,0 +1,33 @@
+id: SMOKE-CLI-006
+title: CLI verbose mode enables verbose output
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode --verbose enables verbose output
+expected_outcome: Verbose flag produces detailed output
+preconditions:
+  - opencode binary exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - --verbose
+    - --help
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "Usage"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Low
+tags:
+  - smoke
+  - cli
+  - verbose
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Fail

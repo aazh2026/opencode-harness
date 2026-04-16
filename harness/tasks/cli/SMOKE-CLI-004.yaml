@@ -1,0 +1,33 @@
+id: SMOKE-CLI-004
+title: CLI invalid argument handling
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode handles invalid arguments gracefully
+expected_outcome: Invalid arguments exit with non-zero code and display error message
+preconditions:
+  - opencode binary exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - --invalid-option
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 1
+  - type: stderr_contains
+    value: "error"
+allowed_variance:
+  exit_code:
+    - 1
+severity: High
+tags:
+  - smoke
+  - cli
+  - error
+  - invalid
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Fail

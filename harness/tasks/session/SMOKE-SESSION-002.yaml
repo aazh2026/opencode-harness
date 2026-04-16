@@ -1,0 +1,33 @@
+id: SMOKE-SESSION-002
+title: Session stop terminates session
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode session stop terminates an active session
+expected_outcome: Session stop exits with code 0 and terminates session
+preconditions:
+  - opencode binary exists
+entry_mode: Session
+agent_mode: Interactive
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - session
+    - stop
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "Session stopped"
+allowed_variance:
+  exit_code:
+    - 0
+severity: High
+tags:
+  - smoke
+  - session
+  - stop
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Fail

@@ -482,7 +482,7 @@
       "priority": "P0",
       "title": "Create SMOKE-API-001 (API health check)",
       "description": "Create smoke test task for API health check in tasks/api/SMOKE-API-001.yaml",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify tasks/api/SMOKE-API-001.yaml parses correctly",
         "AddUnitTest: verify TaskLoader can load SMOKE-API-001 task",
@@ -502,7 +502,7 @@
       "priority": "P0",
       "title": "Create 3-5 additional high-value smoke tasks per category",
       "description": "Create 3-5 additional smoke test tasks for each category (CLI, workspace, session, permissions, api) in tasks/*/ directory",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddIntegrationTest: verify all new smoke tasks in tasks/cli/ parse correctly",
         "AddIntegrationTest: verify all new smoke tasks in tasks/workspace/ parse correctly",

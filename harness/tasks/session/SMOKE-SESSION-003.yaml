@@ -1,0 +1,31 @@
+id: SMOKE-SESSION-003
+title: Session list shows active sessions
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode session list shows all active sessions
+expected_outcome: Session list exits with code 0 and lists sessions
+preconditions:
+  - opencode binary exists
+entry_mode: Session
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - session
+    - list
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+allowed_variance:
+  exit_code:
+    - 0
+severity: Medium
+tags:
+  - smoke
+  - session
+  - list
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Warn

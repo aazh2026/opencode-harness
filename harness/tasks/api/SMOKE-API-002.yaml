@@ -1,0 +1,33 @@
+id: SMOKE-API-002
+title: API status endpoint returns server status
+category: smoke
+fixture_project: fixtures/projects/api-project
+description: Verify that opencode API status endpoint returns server status information
+expected_outcome: API status returns status information with running state
+preconditions:
+  - opencode API server running
+entry_mode: API
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - api
+    - status
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "running"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Critical
+tags:
+  - smoke
+  - api
+  - status
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

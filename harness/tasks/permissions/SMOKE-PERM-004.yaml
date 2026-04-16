@@ -1,0 +1,34 @@
+id: SMOKE-PERM-004
+title: Permission revoke removes access to protected resource
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode revokes permission to access protected resources
+expected_outcome: Permission revoke exits with code 0 and removes access
+preconditions:
+  - opencode binary exists
+entry_mode: Permissions
+agent_mode: Interactive
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - permissions
+    - revoke
+    - /protected/path
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "revoked"
+allowed_variance:
+  exit_code:
+    - 0
+severity: High
+tags:
+  - smoke
+  - permissions
+  - revoke
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

@@ -1,0 +1,33 @@
+id: SMOKE-SESSION-004
+title: Session status displays current session info
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode session status displays current session information
+expected_outcome: Session status exits with code 0 and displays session info
+preconditions:
+  - opencode binary exists
+entry_mode: Session
+agent_mode: Interactive
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - session
+    - status
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "session"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Medium
+tags:
+  - smoke
+  - session
+  - status
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Warn

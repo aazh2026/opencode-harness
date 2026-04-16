@@ -1,0 +1,33 @@
+id: SMOKE-API-004
+title: API metrics endpoint returns server metrics
+category: smoke
+fixture_project: fixtures/projects/api-project
+description: Verify that opencode API metrics endpoint returns server metrics
+expected_outcome: API metrics returns metrics data
+preconditions:
+  - opencode API server running
+entry_mode: API
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - api
+    - metrics
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "metrics"
+allowed_variance:
+  exit_code:
+    - 0
+severity: High
+tags:
+  - smoke
+  - api
+  - metrics
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked
