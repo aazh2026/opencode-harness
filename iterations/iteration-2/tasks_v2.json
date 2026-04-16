@@ -881,7 +881,7 @@
       "priority": "P2",
       "title": "Create workspace-lifecycle.md documentation",
       "description": "Create workspace-lifecycle.md documentation in docs/ directory describing workspace lifecycle management",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddRegressionTest: verify workspace-lifecycle.md exists and is valid markdown",
         "AddIntegrationTest: verify documentation matches FixtureProject implementation"
@@ -901,7 +901,7 @@
       "priority": "P2",
       "title": "Implement LegacyRunner::execute() with actual binary invocation",
       "description": "Implement LegacyRunner::execute() method with actual binary invocation in runners/ directory",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddUnitTest: verify LegacyRunner struct is properly implemented",
         "AddUnitTest: verify execute() method invokes binary correctly",
