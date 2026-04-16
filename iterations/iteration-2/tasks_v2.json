@@ -827,7 +827,7 @@
       "priority": "P2",
       "title": "Implement Verifier trait with actual logic",
       "description": "Implement Verifier trait with actual verification logic in verifiers/ directory",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify Verifier trait is properly defined",
         "AddUnitTest: verify verify() method correctly verifies assertions",
@@ -854,15 +854,15 @@
       "priority": "P2",
       "title": "Connect CLI run command to TaskLoader/Runner",
       "description": "Connect CLI run command to TaskLoader/Runner in cli/ directory for end-to-end execution",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify CLI run command executes TaskLoader correctly",
         "AddIntegrationTest: verify CLI run command uses Runner to execute tasks",
         "AddEndToEndTest: verify full task execution from CLI to output"
       ],
       "test_commands": [
-        "cargo test -p opencode-cli --test cli_run",
-        "cargo clippy -p opencode-cli -- -D warnings"
+        "cargo test -p cli --test cli_run",
+        "cargo clippy -p cli -- -D warnings"
       ],
       "impl_notes": "Update CLI implementation in harness/crates/cli/src/",
       "dependencies": [
