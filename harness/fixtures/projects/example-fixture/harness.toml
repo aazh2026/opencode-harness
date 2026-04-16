@@ -1,0 +1,27 @@
+name: example-fixture
+description: Example fixture project for demonstrating the fixture schema structure
+setup_script: scripts/setup.sh
+teardown_script: scripts/teardown.sh
+files:
+  - path: src/main.rs
+    content: |
+      fn main() {
+          println!("Hello from example fixture");
+      }
+  - path: src/lib.rs
+    content: |
+      pub fn greet() -> String {
+          String::from("Hello from fixture lib")
+      }
+  - path: scripts/setup.sh
+    content: |
+      #!/bin/bash
+      echo "Setting up test environment"
+      mkdir -p target/debug
+    executable: true
+  - path: scripts/teardown.sh
+    content: |
+      #!/bin/bash
+      echo "Tearing down test environment"
+      rm -rf target/debug
+    executable: true

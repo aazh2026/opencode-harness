@@ -1,0 +1,78 @@
+# Fixture Schema Definition
+# This file defines the structure for fixture projects in the opencode-harness system.
+
+$schema: http://json-schema.org/draft-07/schema#
+
+FixtureProject:
+  type: object
+  description: Represents a test fixture project providing setup/teardown scripts and file structures
+  required:
+    - name
+    - description
+    - setup_script
+    - teardown_script
+    - files
+  properties:
+    name:
+      type: string
+      description: Unique identifier for the fixture project
+      minLength: 1
+      maxLength: 100
+      pattern: "^[a-z0-9-]+$"
+      example: "example-project"
+
+    description:
+      type: string
+      description: Human-readable description of the fixture project
+      minLength: 1
+      example: "Example fixture project for testing"
+
+    setup_script:
+      type: string
+      description: Path to the setup script relative to the fixture project root
+      example: "scripts/setup.sh"
+
+    teardown_script:
+      type: string
+      description: Path to the teardown script relative to the fixture project root
+      example: "scripts/teardown.sh"
+
+    files:
+      type: array
+      description: List of file definitions in the fixture project
+      items:
+        type: object
+        required:
+          - path
+          - content
+        properties:
+          path:
+            type: string
+            description: Path to the file relative to the fixture project root
+            example: "src/main.rs"
+          content:
+            type: string
+            description: Content of the file
+            example: "fn main() { println!(\"Hello\"); }"
+          executable:
+            type: boolean
+            description: Whether the file should be marked as executable
+            default: false
+
+# Example fixture project in YAML format:
+#
+# name: example-project
+# description: Example fixture project for testing
+# setup_script: scripts/setup.sh
+# teardown_script: scripts/teardown.sh
+# files:
+#   - path: src/main.rs
+#     content: |
+#       fn main() {
+#           println!("Hello from fixture");
+#       }
+#   - path: scripts/setup.sh
+#     content: |
+#       #!/bin/bash
+#       echo "Setting up test environment"
+#     executable: true

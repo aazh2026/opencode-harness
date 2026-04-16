@@ -1,0 +1,78 @@
+# Task Schema Definition
+# This file defines the structure for task definitions in the opencode-harness system.
+# Supports both YAML and JSON representations.
+
+$schema: http://json-schema.org/draft-07/schema#
+
+Task:
+  type: object
+  description: Represents a test task within the harness system
+  required:
+    - id
+    - title
+    - category
+    - fixture_project
+    - description
+    - expected_outcome
+  properties:
+    id:
+      type: string
+      description: Unique identifier for the task (e.g., "P2-001")
+      pattern: "^[A-Z]+-[0-9]+$"
+      example: "P2-001"
+
+    title:
+      type: string
+      description: Human-readable title of the task
+      minLength: 1
+      maxLength: 200
+      example: "Define Task Schema"
+
+    category:
+      type: string
+      description: Category for organizing tasks
+      enum:
+        - core
+        - schema
+        - integration
+        - regression
+        - smoke
+        - performance
+        - security
+      example: "schema"
+
+    fixture_project:
+      type: string
+      description: Reference to a fixture project path or identifier
+      example: "fixtures/projects/example-project"
+
+    description:
+      type: string
+      description: Detailed description of what the task entails
+      minLength: 1
+      example: "Create harness/tasks/schema.yaml defining Task struct with required fields"
+
+    expected_outcome:
+      type: string
+      description: Description of the expected result when task is complete
+      example: "Task struct is defined with all required fields and validates correctly"
+
+# Example task definition in YAML format:
+#
+# id: P2-001
+# title: Define Task Schema
+# category: schema
+# fixture_project: fixtures/projects/example
+# description: Create harness/tasks/schema.yaml defining Task struct
+# expected_outcome: Schema validates Task definitions correctly
+
+# Example task definition in JSON format:
+#
+# {
+#   "id": "P2-001",
+#   "title": "Define Task Schema",
+#   "category": "schema",
+#   "fixture_project": "fixtures/projects/example",
+#   "description": "Create harness/tasks/schema.yaml defining Task struct",
+#   "expected_outcome": "Schema validates Task definitions correctly"
+# }

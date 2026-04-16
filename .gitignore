@@ -1,0 +1,7 @@
+/target/
+/sessions/
+/iterations/
+/artifacts/
+/.DS_Store
+/.openclaw/
+*.log

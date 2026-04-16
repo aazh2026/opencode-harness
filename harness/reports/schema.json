@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestReport",
+  "description": "Schema for test execution reports in opencode-harness",
+  "definitions": {
+    "TestCase": {
+      "type": "object",
+      "description": "Individual test case result",
+      "required": ["id", "status", "duration", "failure_classification", "error_message"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the test case"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "skipped"],
+          "description": "Test case execution status"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Test case execution time in milliseconds"
+        },
+        "failure_classification": {
+          "type": "string",
+          "enum": ["ImplementationFailure", "DependencyMissing", "EnvironmentNotSupported", "InfraFailure", "FlakySuspected"],
+          "description": "Classification of failure if test failed"
+        },
+        "error_message": {
+          "type": ["string", "null"],
+          "description": "Error message if test failed, null otherwise"
+        }
+      }
+    },
+    "Report": {
+      "type": "object",
+      "description": "Test execution report",
+      "required": ["timestamp", "suite", "total", "passed", "failed", "skipped", "mismatches"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when the report was generated"
+        },
+        "suite": {
+          "type": "string",
+          "description": "Name of the test suite"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of test cases"
+        },
+        "passed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of passed test cases"
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of failed test cases"
+        },
+        "skipped": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of skipped test cases"
+        },
+        "mismatches": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of mismatches detected between expected and actual"
+        }
+      }
+    }
+  }
+}
