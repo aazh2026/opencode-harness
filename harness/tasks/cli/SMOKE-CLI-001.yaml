@@ -1,0 +1,32 @@
+id: SMOKE-CLI-001
+title: CLI help command displays usage
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode --help displays usage information correctly
+expected_outcome: Help command exits with code 0 and displays Usage information
+preconditions:
+  - opencode binary exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - --help
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "Usage:"
+allowed_variance:
+  exit_code:
+    - 0
+severity: High
+tags:
+  - smoke
+  - cli
+  - help
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Fail

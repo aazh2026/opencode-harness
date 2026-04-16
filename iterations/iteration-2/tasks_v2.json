@@ -362,7 +362,7 @@
       "priority": "P0",
       "title": "Create SMOKE-CLI-001 (CLI help command)",
       "description": "Create smoke test task for CLI help command in tasks/cli/SMOKE-CLI-001.yaml",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddIntegrationTest: verify tasks/cli/SMOKE-CLI-001.yaml parses correctly",
         "AddUnitTest: verify TaskLoader can load SMOKE-CLI-001 task",
