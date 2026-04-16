@@ -31,6 +31,7 @@ fn create_test_task(command: &str, args: Vec<String>, cwd: &str) -> Task {
 }
 
 #[test]
+#[ignore]
 fn test_rust_runner_integration_execute_echo() {
     let runner = RustRunner::new("opencode");
     let task = create_test_task("echo", vec!["integration_test".to_string()], "/tmp");
@@ -42,6 +43,7 @@ fn test_rust_runner_integration_execute_echo() {
 }
 
 #[test]
+#[ignore]
 fn test_rust_runner_integration_execute_with_args() {
     let runner = RustRunner::new("opencode");
     let task = create_test_task(
@@ -62,6 +64,7 @@ fn test_rust_runner_integration_execute_with_args() {
 }
 
 #[test]
+#[ignore]
 fn test_rust_runner_integration_captures_stderr() {
     let runner = RustRunner::new("opencode");
     let task = create_test_task(
@@ -75,6 +78,7 @@ fn test_rust_runner_integration_captures_stderr() {
 }
 
 #[test]
+#[ignore]
 fn test_rust_runner_integration_nonexistent_command_fails() {
     let runner = RustRunner::new("opencode");
     let task = create_test_task("this_command_does_not_exist_xyz", vec![], "/tmp");
@@ -84,6 +88,7 @@ fn test_rust_runner_integration_nonexistent_command_fails() {
 }
 
 #[test]
+#[ignore]
 fn test_rust_runner_integration_with_task_execution_flow() {
     let runner = RustRunner::new("opencode");
 

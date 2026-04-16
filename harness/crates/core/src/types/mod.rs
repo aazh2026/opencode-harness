@@ -1,5 +1,6 @@
 pub mod agent_mode;
 pub mod allowed_variance;
+pub mod artifact;
 pub mod assertion;
 pub mod entry_mode;
 pub mod environment;
@@ -7,6 +8,7 @@ pub mod execution_policy;
 pub mod failure_classification;
 pub mod fixture;
 pub mod on_missing_dependency;
+pub mod parity_verdict;
 pub mod path_convention;
 pub mod provider_mode;
 pub mod report;
@@ -19,6 +21,7 @@ pub mod workspace;
 
 pub use agent_mode::AgentMode;
 pub use allowed_variance::{AllowedVariance, TimingVariance};
+pub use artifact::{Artifact, ArtifactKind};
 pub use assertion::AssertionType;
 pub use entry_mode::EntryMode;
 pub use environment::{DefaultEnvironmentProbe, EnvironmentInfo, EnvironmentProbe};
@@ -29,6 +32,7 @@ pub use fixture::{
     TranscriptType, Workspace as FixtureWorkspace, WorkspacePolicy,
 };
 pub use on_missing_dependency::OnMissingDependency;
+pub use parity_verdict::{DiffCategory, ParityVerdict};
 pub use path_convention::PathConvention;
 pub use provider_mode::ProviderMode;
 pub use report::{Report, TestCase, TestCaseStatus};
