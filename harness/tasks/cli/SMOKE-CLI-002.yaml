@@ -1,0 +1,32 @@
+id: SMOKE-CLI-002
+title: CLI version command displays version
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode --version displays version information correctly
+expected_outcome: Version command exits with code 0 and displays version information
+preconditions:
+  - opencode binary exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - --version
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "opencode"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Medium
+tags:
+  - smoke
+  - cli
+  - version
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Fail

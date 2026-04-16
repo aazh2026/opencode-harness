@@ -19,14 +19,14 @@ pub struct DefaultTaskSchemaValidator {
 impl DefaultTaskSchemaValidator {
     pub fn new() -> Self {
         Self {
-            id_pattern: Regex::new(r"^[A-Z]+[0-9]+-[0-9]+$").unwrap(),
+            id_pattern: Regex::new(r"^[A-Z]+-[A-Z]+-[0-9]+$").unwrap(),
         }
     }
 
     fn validate_id(&self, id: &str) -> Result<()> {
         if !self.id_pattern.is_match(id) {
             return Err(ErrorType::Config(format!(
-                "Task ID '{}' does not match pattern '^[A-Z]+-[0-9]+$'",
+                "Task ID '{}' does not match pattern '^[A-Z]+-[A-Z]+-[0-9]+$'",
                 id
             )));
         }
