@@ -267,7 +267,7 @@
       "priority": "P0",
       "title": "Add WorkspacePolicy struct to Fixture schema",
       "description": "Add WorkspacePolicy struct with fields: allow_dirty_git, allow_network, preserve_on_failure to types/fixture.rs",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify WorkspacePolicy struct can be instantiated with all three fields",
         "AddUnitTest: verify WorkspacePolicy can be serialized/deserialized to/from JSON"
@@ -284,7 +284,7 @@
       "priority": "P0",
       "title": "Add ResetStrategy enum to Fixture schema",
       "description": "Add ResetStrategy enum with variants: None, CleanClone, RestoreFiles to types/fixture.rs",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify ResetStrategy enum has all three variants",
         "AddUnitTest: verify ResetStrategy can be serialized/deserialized to/from JSON"

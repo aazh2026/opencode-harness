@@ -1,4 +1,4 @@
-use opencode_core::types::fixture::WorkspacePolicy;
+use opencode_core::types::fixture::{ResetStrategy, WorkspacePolicy};
 
 #[test]
 fn test_workspace_policy_instantiation_with_all_fields() {
@@ -69,4 +69,27 @@ fn test_workspace_policy_all_true() {
     assert!(policy.allow_dirty_git);
     assert!(policy.allow_network);
     assert!(policy.preserve_on_failure);
+}
+
+#[test]
+fn test_reset_strategy_has_all_variants() {
+    let _ = ResetStrategy::None;
+    let _ = ResetStrategy::CleanClone;
+    let _ = ResetStrategy::RestoreFiles;
+}
+
+#[test]
+fn test_reset_strategy_serde_roundtrip() {
+    let strategies = [
+        ResetStrategy::None,
+        ResetStrategy::CleanClone,
+        ResetStrategy::RestoreFiles,
+    ];
+
+    for strategy in &strategies {
+        let serialized = serde_json::to_string(strategy).expect("serialization should succeed");
+        let deserialized: ResetStrategy =
+            serde_json::from_str(&serialized).expect("deserialization should succeed");
+        assert_eq!(*strategy, deserialized);
+    }
 }

@@ -25,7 +25,7 @@
 | P0-12 | Implement TaskSchemaValidator trait | loaders/task_validator.rs | ✅ Done | P0-5, P0-6, P0-7, P0-11 |
 | P0-13 | Implement FixtureLoader trait | loaders/fixture_loader.rs | TODO | P0-14 |
 | P0-14 | Add WorkspacePolicy struct to Fixture schema | types/fixture.rs | TODO | None |
-| P0-15 | Add ResetStrategy enum to Fixture schema | types/fixture.rs | TODO | None |
+| P0-15 | Add ResetStrategy enum to Fixture schema | types/fixture.rs | ✅ Done | None |
 | P0-16 | Complete FixtureProject struct with all missing fields | types/fixture.rs | TODO | P0-14, P0-15 |
 | P0-17 | Create cli-basic fixture project with harness.toml and scripts | fixtures/projects/cli-basic/ | TODO | P0-13 |
 | P0-18 | Create api-project fixture project with harness.toml and scripts | fixtures/projects/api-project/ | TODO | P0-13 |
@@ -154,7 +154,7 @@ pub trait FixtureLoader: Send + Sync {
 }
 ```
 
-### P0-14: WorkspacePolicy
+### P0-14: ✅ Done
 
 **File:** `harness/crates/core/src/types/fixture.rs`
 
