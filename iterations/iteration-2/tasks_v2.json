@@ -854,7 +854,7 @@
       "priority": "P2",
       "title": "Connect CLI run command to TaskLoader/Runner",
       "description": "Connect CLI run command to TaskLoader/Runner in cli/ directory for end-to-end execution",
-      "status": "done",
+      "status": "manual_check",
       "test_criteria": [
         "AddIntegrationTest: verify CLI run command executes TaskLoader correctly",
         "AddIntegrationTest: verify CLI run command uses Runner to execute tasks",
@@ -881,7 +881,7 @@
       "priority": "P2",
       "title": "Create workspace-lifecycle.md documentation",
       "description": "Create workspace-lifecycle.md documentation in docs/ directory describing workspace lifecycle management",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddRegressionTest: verify workspace-lifecycle.md exists and is valid markdown",
         "AddIntegrationTest: verify documentation matches FixtureProject implementation"
