@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use opencode_core::loaders::DefaultTaskLoader;
+use opencode_core::logging::init_logger;
 use opencode_core::runners::DifferentialRunner;
 use std::path::PathBuf;
 use tracing::{error, info};
@@ -37,10 +38,7 @@ fn run_task(task_path: &str) -> Result<(), Box<dyn std::error::Error>> {
         let results = runner.execute_from_path(&path)?;
         info!("Executed {} tasks from directory:", results.len());
         for result in &results {
-            info!(
-                "  {}: verdict={:?}",
-                result.task_id, result.verdict
-            );
+            info!("  {}: verdict={:?}", result.task_id, result.verdict);
         }
     } else if path.is_file() {
         let result = runner.execute_single(&path)?;
@@ -65,6 +63,7 @@ fn run_task(task_path: &str) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn main() {
+    init_logger();
     let cli = Cli::parse();
 
     match cli.command {
