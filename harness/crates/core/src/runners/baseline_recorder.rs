@@ -380,4 +380,210 @@ mod tests {
         let (_recorder, _temp_dir) = create_test_recorder();
         assert_send_sync::<DefaultBaselineRecorder>();
     }
+
+    #[test]
+    fn baseline_record_smoke_tests() {
+        use crate::loaders::baseline_loader::{BaselineLoader, DefaultBaselineLoader};
+        use crate::normalizers::normalizer::NoOpNormalizer;
+        use crate::runners::artifact_persister::ArtifactPersister;
+        use crate::types::baseline::{BaselineMetadata, BaselineRecord};
+        use crate::types::runner_output::RunnerOutput;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let loader = DefaultBaselineLoader::new(temp_dir.path().to_path_buf());
+        let persister = ArtifactPersister::new("test-run", temp_dir.path().to_path_buf());
+        let normalizer = NoOpNormalizer;
+
+        let recorder = DefaultBaselineRecorder::new(
+            Arc::new(loader.clone()),
+            Arc::new(persister),
+            Arc::new(normalizer),
+        );
+
+        let metadata = BaselineMetadata::new()
+            .with_source_impl_version("1.0.0".to_string())
+            .with_target_impl_version("2.0.0".to_string())
+            .with_task_version("1.2.0".to_string())
+            .with_fixture_version("1.1.0".to_string())
+            .with_normalizer_version("1.0.5".to_string())
+            .with_approved_by("reviewer@example.com".to_string())
+            .with_notes("Integration test baseline".to_string());
+
+        assert!(
+            metadata.is_complete(),
+            "Baseline metadata should have all version fields"
+        );
+        assert_eq!(
+            metadata.source_impl_version.as_deref(),
+            Some("1.0.0"),
+            "source_impl_version should be set"
+        );
+        assert_eq!(
+            metadata.target_impl_version.as_deref(),
+            Some("2.0.0"),
+            "target_impl_version should be set"
+        );
+        assert_eq!(
+            metadata.task_version.as_deref(),
+            Some("1.2.0"),
+            "task_version should be set"
+        );
+        assert_eq!(
+            metadata.fixture_version.as_deref(),
+            Some("1.1.0"),
+            "fixture_version should be set"
+        );
+        assert_eq!(
+            metadata.normalizer_version.as_deref(),
+            Some("1.0.5"),
+            "normalizer_version should be set"
+        );
+
+        let legacy_output = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("legacy integration output".to_string())
+            .with_stderr("legacy error".to_string());
+
+        let rust_output = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("rust integration output".to_string())
+            .with_stderr("rust error".to_string());
+
+        let legacy_result: Result<RunnerOutput> = Ok(legacy_output.clone());
+        let rust_result: Result<RunnerOutput> = Ok(rust_output.clone());
+
+        let record = recorder
+            .record_baseline(
+                "TASK-SMOKE-001",
+                &legacy_result,
+                &rust_result,
+                metadata.clone(),
+            )
+            .expect("record_baseline should succeed");
+
+        let yaml = serde_yaml::to_string(&record).expect("serialization should succeed");
+        assert!(
+            yaml.contains("TASK-SMOKE-001"),
+            "YAML should contain task_id"
+        );
+        assert!(
+            yaml.contains("source_impl_version: 1.0.0"),
+            "YAML should contain source_impl_version"
+        );
+        assert!(
+            yaml.contains("target_impl_version: 2.0.0"),
+            "YAML should contain target_impl_version"
+        );
+        assert!(
+            yaml.contains("legacy integration output"),
+            "YAML should contain legacy output"
+        );
+        assert!(
+            yaml.contains("rust integration output"),
+            "YAML should contain rust output"
+        );
+
+        let deserialized: BaselineRecord =
+            serde_yaml::from_str(&yaml).expect("deserialization should succeed");
+        assert_eq!(record.id, deserialized.id, "Roundtrip should preserve id");
+        assert_eq!(
+            record.task_id, deserialized.task_id,
+            "Roundtrip should preserve task_id"
+        );
+        assert_eq!(
+            record.metadata.source_impl_version, deserialized.metadata.source_impl_version,
+            "Roundtrip should preserve source_impl_version"
+        );
+        assert_eq!(
+            record.metadata.target_impl_version, deserialized.metadata.target_impl_version,
+            "Roundtrip should preserve target_impl_version"
+        );
+        assert_eq!(
+            record.metadata.task_version, deserialized.metadata.task_version,
+            "Roundtrip should preserve task_version"
+        );
+        assert_eq!(
+            record.metadata.fixture_version, deserialized.metadata.fixture_version,
+            "Roundtrip should preserve fixture_version"
+        );
+        assert_eq!(
+            record.metadata.normalizer_version, deserialized.metadata.normalizer_version,
+            "Roundtrip should preserve normalizer_version"
+        );
+        assert_eq!(
+            record.legacy_output.stdout, deserialized.legacy_output.stdout,
+            "Roundtrip should preserve legacy stdout"
+        );
+        assert_eq!(
+            record.rust_output.stdout, deserialized.rust_output.stdout,
+            "Roundtrip should preserve rust stdout"
+        );
+        assert_eq!(
+            record.normalized_legacy, deserialized.normalized_legacy,
+            "Roundtrip should preserve normalized_legacy"
+        );
+        assert_eq!(
+            record.normalized_rust, deserialized.normalized_rust,
+            "Roundtrip should preserve normalized_rust"
+        );
+
+        let loaded = loader
+            .load("TASK-SMOKE-001", &record.id)
+            .expect("loader.load should succeed")
+            .expect("loader should return Some record");
+
+        assert_eq!(
+            loaded.id, record.id,
+            "Loader should return correct baseline id"
+        );
+        assert_eq!(
+            loaded.task_id, "TASK-SMOKE-001",
+            "Loader should return correct task_id"
+        );
+        assert_eq!(
+            loaded.metadata.source_impl_version,
+            Some("1.0.0".to_string()),
+            "Loader should preserve source_impl_version"
+        );
+        assert_eq!(
+            loaded.metadata.target_impl_version,
+            Some("2.0.0".to_string()),
+            "Loader should preserve target_impl_version"
+        );
+        assert_eq!(
+            loaded.metadata.task_version,
+            Some("1.2.0".to_string()),
+            "Loader should preserve task_version"
+        );
+        assert_eq!(
+            loaded.metadata.fixture_version,
+            Some("1.1.0".to_string()),
+            "Loader should preserve fixture_version"
+        );
+        assert_eq!(
+            loaded.metadata.normalizer_version,
+            Some("1.0.5".to_string()),
+            "Loader should preserve normalizer_version"
+        );
+        assert_eq!(
+            loaded.legacy_output.stdout, "legacy integration output",
+            "Loader should preserve legacy output"
+        );
+        assert_eq!(
+            loaded.rust_output.stdout, "rust integration output",
+            "Loader should preserve rust output"
+        );
+
+        loader
+            .delete("TASK-SMOKE-001", &record.id)
+            .expect("delete should succeed");
+        let after_delete = loader
+            .load("TASK-SMOKE-001", &record.id)
+            .expect("load after delete should succeed");
+        assert!(
+            after_delete.is_none(),
+            "Record should not exist after delete"
+        );
+    }
 }
