@@ -1,3 +1,7 @@
+mod cli_comparator;
+mod permission_comparator;
+mod workspace_comparator;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -101,6 +105,7 @@ pub trait Comparator: Send + Sync {
     fn name(&self) -> &str;
 }
 
+#[derive(Debug, Clone)]
 pub struct ExactComparator;
 
 impl Comparator for ExactComparator {
@@ -121,6 +126,7 @@ impl Comparator for ExactComparator {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct NormalizedComparator;
 
 impl NormalizedComparator {
@@ -607,4 +613,43 @@ mod tests {
         assert_comparator::<SimilarityComparator>();
         assert_comparator::<LineByLineComparator>();
     }
+
+    #[test]
+    fn comparator_smoke_tests() {
+        fn assert_comparator<T: Comparator>() {}
+
+        assert_comparator::<CliComparator>();
+        assert_comparator::<PermissionComparator>();
+        assert_comparator::<WorkspaceComparator>();
+
+        let cli_comparator = CliComparator::with_default_config();
+        assert_eq!(cli_comparator.name(), "cli");
+        let cli_result = cli_comparator.compare("output", "output");
+        assert_eq!(
+            cli_result.outcome,
+            ComparisonOutcome::SemanticallyEquivalent
+        );
+
+        let perm_comparator = PermissionComparator::with_default_config();
+        assert_eq!(perm_comparator.name(), "permission");
+        let perm_result = perm_comparator.compare("permission required", "permission required");
+        assert_eq!(perm_result.outcome, ComparisonOutcome::StronglyEquivalent);
+
+        let workspace_comparator = WorkspaceComparator::with_default_config();
+        assert_eq!(workspace_comparator.name(), "workspace");
+
+        let tree = r#"{"root_path":"/test","entries":[],"total_files":0,"total_dirs":0}"#;
+        let ws_result = workspace_comparator.compare(tree, tree);
+        assert_eq!(ws_result.outcome, ComparisonOutcome::StronglyEquivalent);
+    }
 }
+
+pub use cli_comparator::{CliComparator, CliComparatorConfig};
+pub use permission_comparator::{
+    PermissionComparator, PermissionComparatorConfig, PermissionPrompt, PromptPattern,
+    PromptPatternMatcher, PromptSequence, PromptType,
+};
+pub use workspace_comparator::{
+    FileTreeComparator, FileTreeDiff, FileTreeEntry, FileTreeSnapshotData, GitStatusComparator,
+    GitStatusData, WorkspaceComparator,
+};
