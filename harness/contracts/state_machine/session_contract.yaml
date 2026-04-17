@@ -1,0 +1,61 @@
+contract_id: SESSION-STATE-MACHINE-001
+name: Session State Machine Contract
+version: 1.0.0
+description: Verifies session lifecycle state transitions parity
+
+state_definitions:
+  states:
+    - id: NEW
+      description: Fresh session, no project bound
+
+    - id: PROJECT_BOUND
+      description: Project directory has been set
+
+    - id: AGENT_ACTIVE
+      description: Agent is currently executing
+
+    - id: WAITING_APPROVAL
+      description: Waiting for user permission
+
+    - id: DONE
+      description: Task completed
+
+transitions:
+  - from: NEW
+    to: PROJECT_BOUND
+    trigger: project_command
+
+  - from: PROJECT_BOUND
+    to: AGENT_ACTIVE
+    trigger: task_start
+
+  - from: AGENT_ACTIVE
+    to: WAITING_APPROVAL
+    trigger: restricted_action
+
+  - from: WAITING_APPROVAL
+    to: AGENT_ACTIVE
+    trigger: approval
+
+  - from: WAITING_APPROVAL
+    to: AGENT_ACTIVE
+    trigger: denial
+
+  - from: AGENT_ACTIVE
+    to: DONE
+    trigger: task_complete
+
+assertions:
+  - type: valid_initial_state
+    severity: P0
+
+  - type: transition_sequence_valid
+    severity: P0
+
+  - type: state_persists_across_reconnect
+    severity: P1
+
+verdict_rules:
+  sequence_matches: Pass
+  sequence_diverges: Fail
+  reconnect_fails: Warn

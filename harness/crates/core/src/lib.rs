@@ -20,7 +20,11 @@ pub use types::parity_verdict::{DiffCategory, ParityVerdict};
 pub use types::report::{Report, TestCase, TestCaseStatus};
 pub use types::task::Task;
 pub use types::task::TaskCategory;
-pub use verifiers::{AssertionResult, DefaultVerifier, VerificationResult, Verifier};
+pub use verifiers::{
+    AssertionResult, DefaultStateMachineVerifier, DefaultVerifier, StateMachineContract,
+    StateMachineVerificationResult, StateMachineVerifier, StateTransition, VerificationResult,
+    Verifier,
+};
 pub use verifiers::{
     DefaultSideEffectVerifier, ExpectedSideEffects, SideEffectVerificationResult,
     SideEffectVerifier,
