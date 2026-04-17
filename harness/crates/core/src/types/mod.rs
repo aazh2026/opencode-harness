@@ -16,6 +16,7 @@ pub mod on_missing_dependency;
 pub mod parity_verdict;
 pub mod path_convention;
 pub mod provider_mode;
+pub mod regression_case;
 pub mod report;
 pub mod runner_input;
 pub mod runner_output;
@@ -50,6 +51,7 @@ pub use parity_verdict::{
 };
 pub use path_convention::PathConvention;
 pub use provider_mode::ProviderMode;
+pub use regression_case::{RegressionCase, RegressionStatus};
 pub use report::{Report, TestCase, TestCaseStatus};
 pub use runner_input::RunnerInput;
 pub use runner_output::RunnerOutput;
