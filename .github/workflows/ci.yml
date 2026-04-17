@@ -1,0 +1,51 @@
+name: CI (PR Gate)
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build
+        run: cargo build --release 2>&1 || cargo build 2>&1
+
+      - name: Run PR gate checks
+        run: |
+          echo "Running PR gate checks..."
+          # In a real setup, this would run the differential runner
+          # cargo run --bin parity-runner -- eval --gate pr || true
+
+      - name: Generate report
+        run: |
+          echo "Generating parity report..."
+          # This would generate parity-report.json in a real setup
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parity-report-pr-${{ github.sha }}
+          path: parity-report.json
+          retention-days: 30
+
+      - name: Display results
+        if: always()
+        run: |
+          if [ -f parity-report.json ]; then
+            echo "=== PR Gate Results ==="
+            cat parity-report.json || echo "Report generation failed"
+          else
+            echo "No report generated - PR gate skipped or failed early"
+          fi

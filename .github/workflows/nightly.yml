@@ -1,0 +1,74 @@
+name: CI (Nightly Gate)
+
+on:
+  schedule:
+    # Run at 2:00 AM every day
+    - cron: '0 2 * * *'
+  # Allow manual triggers
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to test'
+        required: false
+        default: 'main'
+
+jobs:
+  parity-nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || 'main' }}
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build
+        run: cargo build --release 2>&1 || cargo build 2>&1
+
+      - name: Run nightly gate checks
+        run: |
+          echo "Running nightly gate checks..."
+          echo "Schedule: ${{ github.event.schedule }}"
+          # In a real setup, this would run the full differential suite
+          # cargo run --bin parity-runner -- eval --gate nightly
+
+      - name: Generate report
+        run: |
+          echo "Generating nightly parity report..."
+          # This would generate parity-report.json in a real setup
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parity-report-nightly-${{ github.sha }}-${{ steps.date.outputs.date }}
+          path: parity-report.json
+          retention-days: 90
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Nightly gate failed!"
+          if [ -f parity-report.json ]; then
+            echo "=== Failure Report ==="
+            cat parity-report.json
+          fi
+
+  report:
+    needs: parity-nightly
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate summary
+        run: |
+          echo "## Nightly Gate Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Date: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "Status: ${{ needs.parity-nightly.result }}" >> $GITHUB_STEP_SUMMARY

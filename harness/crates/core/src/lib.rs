@@ -3,6 +3,7 @@ pub mod error;
 pub mod loaders;
 pub mod logging;
 pub mod normalizers;
+pub mod reporting;
 pub mod runners;
 pub mod types;
 pub mod verifiers;

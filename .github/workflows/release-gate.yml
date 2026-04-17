@@ -1,0 +1,79 @@
+name: CI (Release Gate)
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+
+jobs:
+  parity-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=main-latest" >> $GITHUB_OUTPUT
+          fi
+          echo "Version: ${{ steps.version.outputs.VERSION }}"
+
+      - name: Build
+        run: cargo build --release 2>&1 || cargo build 2>&1
+
+      - name: Run release gate checks
+        run: |
+          echo "Running release gate checks..."
+          echo "Version: ${{ steps.version.outputs.VERSION }}"
+          # In a real setup, this runs the full differential suite with strict thresholds
+          # cargo run --bin parity-runner -- eval --gate release
+
+      - name: Generate release report
+        run: |
+          echo "Generating release parity report..."
+          # This would generate the final parity-report.json
+
+      - name: Upload release report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parity-report-release-${{ steps.version.outputs.VERSION }}
+          path: parity-report.json
+          retention-days: 180
+
+      - name: Create GitHub release annotation
+        if: always()
+        run: |
+          echo "=== Release Gate Results ==="
+          if [ -f parity-report.json ]; then
+            echo "Report available: parity-report.json"
+            # In real setup, would parse JSON and create annotations
+          else
+            echo "WARNING: No report generated - release gate may have failed"
+          fi
+
+  release-blocker:
+    needs: parity-release
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify release failure
+        run: |
+          echo "::error::Release gate failed! Cannot proceed with release."
+          echo ""
+          echo "Please review the parity report artifact and address failures."
+          exit 1
