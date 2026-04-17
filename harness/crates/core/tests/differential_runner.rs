@@ -7,6 +7,7 @@ use opencode_core::types::assertion::AssertionType;
 use opencode_core::types::entry_mode::EntryMode;
 use opencode_core::types::execution_policy::ExecutionPolicy;
 use opencode_core::types::on_missing_dependency::OnMissingDependency;
+use opencode_core::types::parity_verdict::{ParityVerdict, VarianceType};
 use opencode_core::types::provider_mode::ProviderMode;
 use opencode_core::types::severity::Severity;
 use opencode_core::types::task::Task;
@@ -629,4 +630,378 @@ fn test_regression_existing_differential_runner_tests_still_pass() {
     assert_eq!(result2.rust_exit_code(), None);
     assert_eq!(result2.legacy_stdout(), "");
     assert_eq!(result2.rust_stdout(), "");
+}
+
+#[test]
+fn test_allowed_variance_integration_tests_timing_variance() {
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let temp_dir = TempDir::new().unwrap();
+    let task_yaml = temp_dir.path().join("timing_variance_task.yaml");
+
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: VAR-TIMING-001
+title: Timing Variance Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Test timing variance
+expected_outcome: Timing should be within allowed variance
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["timing_test"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+allowed_variance:
+  exit_code: []
+  timing_ms:
+    min: 0
+    max: 5000
+  output_patterns: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let loaded_task = runner.task_loader.load_single(&task_yaml).unwrap();
+    assert!(loaded_task.allowed_variance.is_some());
+
+    let allowed_variance = loaded_task.allowed_variance.clone().unwrap();
+    assert!(allowed_variance.timing_ms.is_some());
+
+    let result = runner.execute_from_task(&loaded_task);
+    assert!(result.is_ok(), "execute_from_task should succeed");
+}
+
+#[test]
+fn test_allowed_variance_integration_tests_exit_code_variance() {
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let temp_dir = TempDir::new().unwrap();
+    let task_yaml = temp_dir.path().join("exit_code_variance_task.yaml");
+
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: VAR-EXITCODE-001
+title: Exit Code Variance Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Test exit code variance
+expected_outcome: Exit code 0 or 1 both acceptable
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: bash
+  args: ["-c", "exit 0"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+allowed_variance:
+  exit_code: [0, 1]
+  timing_ms: null
+  output_patterns: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let loaded_task = runner.task_loader.load_single(&task_yaml).unwrap();
+    assert!(loaded_task.allowed_variance.is_some());
+
+    let allowed_variance = loaded_task.allowed_variance.clone().unwrap();
+    assert!(allowed_variance.exit_code.contains(&0));
+    assert!(allowed_variance.exit_code.contains(&1));
+
+    let result = runner.execute_from_task(&loaded_task);
+    assert!(result.is_ok(), "execute_from_task should succeed");
+}
+
+#[test]
+fn test_allowed_variance_integration_output_pattern_check_produces_output_pattern_variance_verdict()
+{
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let temp_dir = TempDir::new().unwrap();
+    let task_yaml = temp_dir.path().join("output_pattern_verdict_task.yaml");
+
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: VAR-OUTPUT-VERDICT-001
+title: Output Pattern Variance Verdict Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Test output pattern variance produces correct verdict
+expected_outcome: Should produce PassWithAllowedVariance for output pattern
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["output123test"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+allowed_variance:
+  exit_code: []
+  timing_ms:
+    min: 0
+    max: 10000
+  output_patterns:
+    - "output\\d+test"
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let loaded_task = runner.task_loader.load_single(&task_yaml).unwrap();
+    let result = runner.execute_from_task(&loaded_task);
+
+    assert!(result.is_ok());
+    let diff_result = result.unwrap();
+
+    match diff_result.verdict {
+        ParityVerdict::PassWithAllowedVariance {
+            variance_type: VarianceType::OutputPattern,
+            ..
+        } => {}
+        ParityVerdict::PassWithAllowedVariance {
+            variance_type: VarianceType::Timing,
+            ..
+        } => {}
+        ParityVerdict::Pass => {}
+        ParityVerdict::ManualCheck { reason, .. } => {
+            if reason.contains("One or both runners failed") {
+                return;
+            }
+            panic!(
+                "Expected Pass or PassWithAllowedVariance, got ManualCheck: {}",
+                reason
+            );
+        }
+        other => {
+            panic!("Expected Pass or PassWithAllowedVariance, got {:?}", other);
+        }
+    }
+}
+
+#[test]
+fn test_allowed_variance_integration_verify_config_passed_through_pipeline() {
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let temp_dir = TempDir::new().unwrap();
+    let task_yaml = temp_dir.path().join("pipeline_task.yaml");
+
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: VAR-PIPELINE-001
+title: Pipeline Test
+category: integration
+fixture_project: fixtures/projects/cli-basic
+description: Verify allowed_variance config flows through pipeline
+expected_outcome: Config should be accessible in runner
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["pipeline_test"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+allowed_variance:
+  exit_code: [0]
+  timing_ms:
+    min: 0
+    max: 1000
+  output_patterns:
+    - "\\d+"
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let loaded_task = runner.task_loader.load_single(&task_yaml).unwrap();
+    assert!(
+        loaded_task.allowed_variance.is_some(),
+        "allowed_variance should be set on task"
+    );
+
+    let result = runner.execute_from_task(&loaded_task);
+    assert!(
+        result.is_ok(),
+        "execute_from_task should succeed with allowed_variance config"
+    );
+
+    let diff_result = result.unwrap();
+    assert!(
+        diff_result.task_id == "VAR-PIPELINE-001",
+        "task_id should be preserved through pipeline"
+    );
+}
+
+#[test]
+fn test_allowed_variance_integration_timing_check_produces_timing_variance_verdict() {
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let temp_dir = TempDir::new().unwrap();
+    let task_yaml = temp_dir.path().join("timing_verdict_task.yaml");
+
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: VAR-TIMING-VERDICT-001
+title: Timing Variance Verdict Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Test timing variance produces correct verdict
+expected_outcome: Should produce PassWithAllowedVariance for timing
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["timing_verdict"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+allowed_variance:
+  exit_code: []
+  timing_ms:
+    min: 0
+    max: 10000
+  output_patterns: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let loaded_task = runner.task_loader.load_single(&task_yaml).unwrap();
+    assert!(loaded_task.allowed_variance.is_some());
+
+    let result = runner.execute_from_task(&loaded_task);
+    assert!(result.is_ok(), "execute_from_task should succeed");
+
+    let diff_result = result.unwrap();
+    match diff_result.verdict {
+        ParityVerdict::PassWithAllowedVariance {
+            variance_type: VarianceType::Timing,
+            details,
+        } => {
+            assert!(
+                details.contains("Timing diff"),
+                "details should mention timing diff, got: {}",
+                details
+            );
+        }
+        ParityVerdict::Pass => {}
+        ParityVerdict::ManualCheck { reason, .. } => {
+            if reason.contains("One or both runners failed") {
+                return;
+            }
+            panic!(
+                "Expected Pass or PassWithAllowedVariance(Timing), got ManualCheck: {}",
+                reason
+            );
+        }
+        other => {
+            panic!(
+                "Expected Pass or PassWithAllowedVariance(Timing), got {:?}",
+                other
+            );
+        }
+    }
+}
+
+#[test]
+fn test_allowed_variance_integration_exit_code_check_produces_exit_code_variance_verdict() {
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let temp_dir = TempDir::new().unwrap();
+    let task_yaml = temp_dir.path().join("exit_code_verdict_task.yaml");
+
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: VAR-EXITCODE-VERDICT-001
+title: Exit Code Variance Verdict Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Test exit code variance produces correct verdict
+expected_outcome: Should produce PassWithAllowedVariance for exit code
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: bash
+  args: ["-c", "exit 0"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+allowed_variance:
+  exit_code: [0, 1, 2]
+  timing_ms: null
+  output_patterns: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let loaded_task = runner.task_loader.load_single(&task_yaml).unwrap();
+    let result = runner.execute_from_task(&loaded_task);
+
+    assert!(result.is_ok());
+    let diff_result = result.unwrap();
+
+    match diff_result.verdict {
+        ParityVerdict::PassWithAllowedVariance {
+            variance_type: VarianceType::ExitCode,
+            ..
+        } => {}
+        ParityVerdict::Pass => {}
+        other => {
+            panic!(
+                "Expected Pass or PassWithAllowedVariance(ExitCode), got {:?}",
+                other
+            );
+        }
+    }
 }

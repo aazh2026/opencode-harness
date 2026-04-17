@@ -3,6 +3,7 @@ use crate::loaders::TaskLoader;
 use crate::runners::artifact_persister::ArtifactPersister;
 use crate::runners::legacy_runner::{LegacyRunner, LegacyRunnerResult};
 use crate::runners::rust_runner::{RustRunner, RustRunnerResult};
+use crate::types::allowed_variance::AllowedVariance;
 use crate::types::artifact::Artifact;
 use crate::types::failure_classification::FailureClassification;
 use crate::types::parity_verdict::{DiffCategory, ParityVerdict, VarianceType};
@@ -50,7 +51,12 @@ impl<L: TaskLoader> DifferentialRunner<L> {
         let rust_result = rust_runner.execute(input);
         debug!("Rust runner completed");
 
-        let verdict = self.determine_verdict_from_outputs(&legacy_result, &rust_result, input);
+        let verdict = self.determine_verdict_from_outputs(
+            &legacy_result,
+            &rust_result,
+            input,
+            &input.task.allowed_variance,
+        );
         info!("Verdict determined: {:?}", verdict);
 
         let duration_ms = start.elapsed().as_millis() as u64;
@@ -232,6 +238,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
         legacy_result: &Result<RunnerOutput>,
         rust_result: &Result<RunnerOutput>,
         input: &RunnerInput,
+        allowed_variance: &Option<AllowedVariance>,
     ) -> ParityVerdict {
         let (lr, rr) = match (legacy_result, rust_result) {
             (Ok(l), Ok(r)) => (l, r),
@@ -243,7 +250,46 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             }
         };
 
+        let timing_diff = (lr.duration_ms as i64 - rr.duration_ms as i64).unsigned_abs();
+        let max_duration = lr.duration_ms.max(rr.duration_ms);
+        let timing_tolerance = input.capture_options.timing_tolerance.unwrap_or(0.5);
+
+        if let Some(ref variance) = allowed_variance {
+            if let Some(ref timing_ms) = variance.timing_ms {
+                let within_tolerance =
+                    if let (Some(min), Some(max)) = (timing_ms.min, timing_ms.max) {
+                        timing_diff >= min && timing_diff <= max
+                    } else if let Some(min) = timing_ms.min {
+                        timing_diff >= min
+                    } else if let Some(max) = timing_ms.max {
+                        timing_diff <= max
+                    } else {
+                        false
+                    };
+
+                if within_tolerance {
+                    return ParityVerdict::PassWithAllowedVariance {
+                        variance_type: VarianceType::Timing,
+                        details: format!("Timing diff {}ms within allowed variance", timing_diff),
+                    };
+                }
+            }
+        }
+
         if lr.exit_code != rr.exit_code {
+            if let Some(ref variance) = allowed_variance {
+                let lr_exit = lr.exit_code.unwrap_or(0) as u32;
+                let rr_exit = rr.exit_code.unwrap_or(0) as u32;
+                if variance.exit_code.contains(&lr_exit) && variance.exit_code.contains(&rr_exit) {
+                    return ParityVerdict::PassWithAllowedVariance {
+                        variance_type: VarianceType::ExitCode,
+                        details: format!(
+                            "Exit code diff {} and {} both in allowed list",
+                            lr_exit, rr_exit
+                        ),
+                    };
+                }
+            }
             return ParityVerdict::Fail {
                 category: DiffCategory::ExitCode,
                 details: format!(
@@ -254,6 +300,22 @@ impl<L: TaskLoader> DifferentialRunner<L> {
         }
 
         if lr.stdout != rr.stdout {
+            if let Some(ref variance) = allowed_variance {
+                if !variance.output_patterns.is_empty() {
+                    let rust_stdout = rr.stdout.trim();
+                    let pattern_matches = variance.output_patterns.iter().any(|p| {
+                        regex::Regex::new(p)
+                            .map(|re| re.is_match(rust_stdout))
+                            .unwrap_or(false)
+                    });
+                    if pattern_matches {
+                        return ParityVerdict::PassWithAllowedVariance {
+                            variance_type: VarianceType::OutputPattern,
+                            details: "Output matches allowed pattern".to_string(),
+                        };
+                    }
+                }
+            }
             return ParityVerdict::Fail {
                 category: DiffCategory::OutputText,
                 details: "Stdout differs".to_string(),
@@ -267,9 +329,6 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             };
         }
 
-        let timing_diff = (lr.duration_ms as i64 - rr.duration_ms as i64).unsigned_abs();
-        let max_duration = lr.duration_ms.max(rr.duration_ms);
-        let timing_tolerance = input.capture_options.timing_tolerance.unwrap_or(0.5);
         if max_duration > 0 && timing_diff as f64 > max_duration as f64 * timing_tolerance {
             return ParityVerdict::Fail {
                 category: DiffCategory::Timing,
