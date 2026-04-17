@@ -656,4 +656,156 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_env_overrides_applied_via_command_envs() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/usr/bin/printenv".to_string();
+        task.input.args = vec!["TEST_LEGACY_ENV_VAR".to_string()];
+
+        let mut env_overrides = HashMap::new();
+        env_overrides.insert(
+            "TEST_LEGACY_ENV_VAR".to_string(),
+            "legacy_test_value_456".to_string(),
+        );
+
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            env_overrides,
+            5,
+            Some(PathBuf::from("/usr/bin/printenv")),
+        );
+
+        let runner = LegacyRunner::new("test-env-overrides");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert!(
+            output.capability_summary.binary_available,
+            "binary_available should be true"
+        );
+        assert!(
+            output.stdout.contains("legacy_test_value_456"),
+            "Expected stdout to contain 'legacy_test_value_456' but got: {}",
+            output.stdout
+        );
+    }
+
+    #[test]
+    fn test_env_overrides_passed_to_subprocess() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/usr/bin/env".to_string();
+        task.input.args = vec![];
+
+        let mut env_overrides = HashMap::new();
+        env_overrides.insert("CUSTOM_VAR_ONE".to_string(), "value_one".to_string());
+        env_overrides.insert("CUSTOM_VAR_TWO".to_string(), "value_two".to_string());
+
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            env_overrides,
+            5,
+            Some(PathBuf::from("/usr/bin/env")),
+        );
+
+        let runner = LegacyRunner::new("test-env-passing");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert!(
+            output.stdout.contains("CUSTOM_VAR_ONE=value_one"),
+            "Expected stdout to contain 'CUSTOM_VAR_ONE=value_one' but got: {}",
+            output.stdout
+        );
+        assert!(
+            output.stdout.contains("CUSTOM_VAR_TWO=value_two"),
+            "Expected stdout to contain 'CUSTOM_VAR_TWO=value_two' but got: {}",
+            output.stdout
+        );
+    }
+
+    #[test]
+    fn test_env_overrides_with_timeout() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/usr/bin/printenv".to_string();
+        task.input.args = vec!["TIMEOUT_TEST_VAR".to_string()];
+
+        let mut env_overrides = HashMap::new();
+        env_overrides.insert(
+            "TIMEOUT_TEST_VAR".to_string(),
+            "timeout_env_value".to_string(),
+        );
+
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            env_overrides,
+            10,
+            Some(PathBuf::from("/usr/bin/printenv")),
+        );
+
+        let runner = LegacyRunner::new("test-env-with-timeout");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert!(
+            output.capability_summary.timeout_enforced,
+            "timeout_enforced should be true"
+        );
+        assert!(
+            output.stdout.contains("timeout_env_value"),
+            "Expected stdout to contain 'timeout_env_value' but got: {}",
+            output.stdout
+        );
+    }
+
+    #[test]
+    fn test_env_overrides_multiple_variables() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/usr/bin/env".to_string();
+        task.input.args = vec![];
+
+        let mut env_overrides = HashMap::new();
+        env_overrides.insert("VAR_A".to_string(), "A".to_string());
+        env_overrides.insert("VAR_B".to_string(), "B".to_string());
+        env_overrides.insert("VAR_C".to_string(), "C".to_string());
+
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            env_overrides,
+            5,
+            Some(PathBuf::from("/usr/bin/env")),
+        );
+
+        let runner = LegacyRunner::new("test-multiple-envs");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert!(
+            output.stdout.contains("VAR_A=A"),
+            "Expected stdout to contain 'VAR_A=A' but got: {}",
+            output.stdout
+        );
+        assert!(
+            output.stdout.contains("VAR_B=B"),
+            "Expected stdout to contain 'VAR_B=B' but got: {}",
+            output.stdout
+        );
+        assert!(
+            output.stdout.contains("VAR_C=C"),
+            "Expected stdout to contain 'VAR_C=C' but got: {}",
+            output.stdout
+        );
+    }
 }
