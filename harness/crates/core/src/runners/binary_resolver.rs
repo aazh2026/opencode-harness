@@ -126,6 +126,7 @@ impl Default for BinaryResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn test_binary_resolver_creation() {
@@ -173,5 +174,64 @@ mod tests {
         env::remove_var("OPENCODE_PATH");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), PathBuf::from("/usr/bin/false"));
+    }
+
+    #[test]
+    fn test_binary_path_checked_first_in_resolve_opencode_rs_with_override() {
+        let temp_dir = TempDir::new().unwrap();
+        let custom_path = temp_dir.path().join("opencode-rs");
+
+        #[cfg(unix)]
+        std::fs::write(&custom_path, "").unwrap();
+        #[cfg(windows)]
+        std::fs::write(&custom_path, "").unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&custom_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        let resolver = BinaryResolver::new();
+        let result = resolver.resolve_opencode_rs_with_override(Some(&custom_path));
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), custom_path);
+    }
+
+    #[test]
+    fn test_binary_path_nonexistent_returns_error() {
+        let resolver = BinaryResolver::new();
+        let nonexistent = PathBuf::from("/nonexistent/path/to/opencode-rs");
+        let result = resolver.resolve_opencode_rs_with_override(Some(&nonexistent));
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("does not exist"));
+    }
+
+    #[test]
+    fn test_binary_path_takes_precedence_over_env_var() {
+        let temp_dir = TempDir::new().unwrap();
+        let custom_path = temp_dir.path().join("opencode-rs");
+
+        #[cfg(unix)]
+        std::fs::write(&custom_path, "").unwrap();
+        #[cfg(windows)]
+        std::fs::write(&custom_path, "").unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&custom_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        let resolver = BinaryResolver::new();
+        env::set_var("OPENCODE_RS_PATH", "/usr/bin/false");
+        let result = resolver.resolve_opencode_rs_with_override(Some(&custom_path));
+        env::remove_var("OPENCODE_RS_PATH");
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), custom_path);
     }
 }

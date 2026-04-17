@@ -1,0 +1,12 @@
+{
+  "session_id": "b1010eb7-2d8d-42c9-97ce-73d5c69ebe07",
+  "runner_name": "test-env",
+  "task_id": "TEST-001",
+  "exit_code": 0,
+  "duration_ms": 3,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 15,
+  "stderr_size_bytes": 0,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:13:23.433444Z"
+}

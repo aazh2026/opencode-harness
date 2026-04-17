@@ -1,0 +1,12 @@
+{
+  "session_id": "1e4e86d0-4cf0-4e47-961a-327b66330b51",
+  "runner_name": "test-capability",
+  "task_id": "TEST-001",
+  "exit_code": 0,
+  "duration_ms": 4,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 5,
+  "stderr_size_bytes": 0,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:13:23.432154Z"
+}
