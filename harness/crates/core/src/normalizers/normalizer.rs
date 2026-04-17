@@ -532,4 +532,59 @@ mod tests {
             assert_eq!(result, "/home/test/file.txt");
         }
     }
+
+    #[test]
+    fn normalizer_smoke_tests() {
+        fn assert_normalizer<T: Normalizer>() {}
+        assert_normalizer::<NoOpNormalizer>();
+        assert_normalizer::<WhitespaceNormalizer>();
+        assert_normalizer::<LineEndingNormalizer>();
+        assert_normalizer::<PathNormalizer>();
+
+        let noop = NoOpNormalizer;
+        let whitespace = WhitespaceNormalizer;
+        let line_ending = LineEndingNormalizer;
+        let path = PathNormalizer;
+
+        assert!(!noop.name().is_empty());
+        assert!(!whitespace.name().is_empty());
+        assert!(!line_ending.name().is_empty());
+        assert!(!path.name().is_empty());
+
+        assert!(!noop.describe_rule().is_empty());
+        assert!(!whitespace.describe_rule().is_empty());
+        assert!(!line_ending.describe_rule().is_empty());
+        assert!(!path.describe_rule().is_empty());
+
+        let (noop_out, noop_trans) = noop.audit_normalize("  test  ");
+        assert_eq!(noop_out, "  test  ");
+        assert_eq!(noop_trans.transformation_type, "none");
+        assert_eq!(noop_trans.before_length, 8);
+        assert_eq!(noop_trans.after_length, 8);
+
+        let (ws_out, ws_trans) = whitespace.audit_normalize("  hello \t world  ");
+        assert_eq!(ws_out, "hello world");
+        assert_eq!(ws_trans.transformation_type, "whitespace");
+        assert_eq!(ws_trans.before_length, 17);
+        assert_eq!(ws_trans.after_length, 11);
+
+        let (le_out, le_trans) = line_ending.audit_normalize("line1\r\nline2\r");
+        assert!(!le_out.contains("\r\n") && !le_out.contains("\r"));
+        assert_eq!(le_trans.transformation_type, "line_endings");
+
+        let output = NormalizedOutput::new("  hello \t world  \r\ntest", "");
+        let result = output.apply_multiple(&[&whitespace as &dyn Normalizer]);
+        assert_eq!(result.stdout, "hello world test");
+
+        let output2 = NormalizedOutput::new("  hello  world  ", "");
+        let result2 = output2.apply_multiple(&[
+            &whitespace as &dyn Normalizer,
+            &line_ending as &dyn Normalizer,
+        ]);
+        assert!(result2.normalized);
+
+        let composed = NormalizedOutput::new("  hello \r\n world  \t  ", "");
+        let result3 = composed.apply(&WhitespaceNormalizer);
+        assert!(result3.stdout.contains("hello"));
+    }
 }
