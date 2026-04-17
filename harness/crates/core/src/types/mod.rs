@@ -29,7 +29,7 @@ pub mod task_status;
 pub mod workspace;
 
 pub use agent_mode::AgentMode;
-pub use allowed_variance::{AllowedVariance, TimingVariance};
+pub use allowed_variance::{AllowedVariance, TimingVariance, WhitelistEntry, WhitelistScope};
 pub use artifact::{Artifact, ArtifactKind};
 pub use assertion::AssertionType;
 pub use baseline::{BaselineMetadata, BaselineRecord};
