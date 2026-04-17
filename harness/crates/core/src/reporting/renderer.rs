@@ -373,10 +373,7 @@ impl JUnitXmlRenderer {
         writeln!(
             output,
             r#"<testsuites name="parity-report" tests="{}" failures="{}" errors="{}" skipped="{}">"#,
-            tests_total,
-            failures,
-            errors,
-            skipped
+            tests_total, failures, errors, skipped
         )?;
 
         let suite_name = if report.suite_info.name.is_empty() {
@@ -448,7 +445,9 @@ impl JUnitXmlRenderer {
         )
         .unwrap();
 
-        if let Some((result_type, message, type_attr)) = self.verdict_to_junit_result(&result.verdict) {
+        if let Some((result_type, message, type_attr)) =
+            self.verdict_to_junit_result(&result.verdict)
+        {
             if result_type == "failure" {
                 writeln!(
                     output,
@@ -478,7 +477,10 @@ impl JUnitXmlRenderer {
                 }
                 writeln!(output, "      </error>").unwrap();
             }
-        } else if matches!(result.verdict, ParityVerdict::ManualCheck { .. } | ParityVerdict::Blocked { .. }) {
+        } else if matches!(
+            result.verdict,
+            ParityVerdict::ManualCheck { .. } | ParityVerdict::Blocked { .. }
+        ) {
             writeln!(output, r#"      <skipped/>"#).unwrap();
         }
 
@@ -491,21 +493,31 @@ impl JUnitXmlRenderer {
         match verdict {
             ParityVerdict::Pass => None,
             ParityVerdict::PassWithAllowedVariance { .. } => None,
-            ParityVerdict::Fail { details, .. } => {
-                Some(("failure".to_string(), details.clone(), "ImplementationFailure".to_string()))
-            }
-            ParityVerdict::Warn { message, .. } => {
-                Some(("failure".to_string(), message.clone(), "Warning".to_string()))
-            }
-            ParityVerdict::ManualCheck { reason, .. } => {
-                Some(("error".to_string(), reason.clone(), "ManualCheckRequired".to_string()))
-            }
-            ParityVerdict::Blocked { reason, .. } => {
-                Some(("error".to_string(), format!("{:?}", reason), "Blocked".to_string()))
-            }
-            ParityVerdict::Error { runner, reason } => {
-                Some(("error".to_string(), format!("{}: {}", runner, reason), runner.clone()))
-            }
+            ParityVerdict::Fail { details, .. } => Some((
+                "failure".to_string(),
+                details.clone(),
+                "ImplementationFailure".to_string(),
+            )),
+            ParityVerdict::Warn { message, .. } => Some((
+                "failure".to_string(),
+                message.clone(),
+                "Warning".to_string(),
+            )),
+            ParityVerdict::ManualCheck { reason, .. } => Some((
+                "error".to_string(),
+                reason.clone(),
+                "ManualCheckRequired".to_string(),
+            )),
+            ParityVerdict::Blocked { reason, .. } => Some((
+                "error".to_string(),
+                format!("{:?}", reason),
+                "Blocked".to_string(),
+            )),
+            ParityVerdict::Error { runner, reason } => Some((
+                "error".to_string(),
+                format!("{}: {}", runner, reason),
+                runner.clone(),
+            )),
         }
     }
 }
@@ -834,7 +846,11 @@ mod tests {
     fn test_junit_xml_full_report_rendering() {
         let renderer = JUnitXmlRenderer::new();
         let mut report = ParityReport::new("TestRunner");
-        report.add_task(TaskResult::new("TEST-001".to_string(), ParityVerdict::Pass, 100));
+        report.add_task(TaskResult::new(
+            "TEST-001".to_string(),
+            ParityVerdict::Pass,
+            100,
+        ));
         report.add_task(TaskResult::new(
             "TEST-002".to_string(),
             ParityVerdict::Fail {
@@ -888,7 +904,8 @@ mod tests {
         report.compute_summary();
 
         let mut output = String::new();
-        <JUnitXmlRenderer as ReportRenderer>::render_report(&renderer, &report, &mut output).unwrap();
+        <JUnitXmlRenderer as ReportRenderer>::render_report(&renderer, &report, &mut output)
+            .unwrap();
         assert!(output.starts_with(r#"<?xml version="1.0" encoding="UTF-8"?>"#));
     }
 

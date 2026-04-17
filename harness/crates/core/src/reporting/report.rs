@@ -209,7 +209,8 @@ impl ParityReport {
                                 .or_insert(0) += 1;
                             environment_limited_count += 1;
                         }
-                        BlockedReason::BinaryNotFound { .. } | BlockedReason::PermissionDenied { .. } => {
+                        BlockedReason::BinaryNotFound { .. }
+                        | BlockedReason::PermissionDenied { .. } => {
                             *failure_type_breakdown
                                 .entry(FailureClassification::InfraFailure)
                                 .or_insert(0) += 1;

@@ -253,13 +253,11 @@ fn test_blocked_tasks_counted_correctly() {
         "Should have at least 1 blocker from blocked tasks"
     );
 
-    let has_blocked_failure = gate.blockers.iter().any(|f| {
-        matches!(f, GateFailure::BlockedTask { task_id: _, .. })
-    });
-    assert!(
-        has_blocked_failure,
-        "Should have BlockedTask failure type"
-    );
+    let has_blocked_failure = gate
+        .blockers
+        .iter()
+        .any(|f| matches!(f, GateFailure::BlockedTask { task_id: _, .. }));
+    assert!(has_blocked_failure, "Should have BlockedTask failure type");
 }
 
 #[test]

@@ -589,7 +589,11 @@ mod tests {
             threshold: 0.1,
         };
         let desc = failure.description();
-        assert!(desc.contains("0.0%"), "Expected 0.0% for zero tasks, got: {}", desc);
+        assert!(
+            desc.contains("0.0%"),
+            "Expected 0.0% for zero tasks, got: {}",
+            desc
+        );
         assert!(desc.contains("0/0"), "Expected 0/0 format, got: {}", desc);
     }
 
@@ -601,7 +605,11 @@ mod tests {
             threshold: 0.1,
         };
         let desc = failure.description();
-        assert!(desc.contains("10.0%"), "Expected 10.0% for 1/10, got: {}", desc);
+        assert!(
+            desc.contains("10.0%"),
+            "Expected 10.0% for 1/10, got: {}",
+            desc
+        );
         assert!(desc.contains("1/10"), "Expected 1/10 format, got: {}", desc);
     }
 
@@ -613,7 +621,11 @@ mod tests {
             threshold: 0.1,
         };
         let desc = failure.description();
-        assert!(desc.contains("50.0%"), "Expected 50.0% for 5/10, got: {}", desc);
+        assert!(
+            desc.contains("50.0%"),
+            "Expected 50.0% for 5/10, got: {}",
+            desc
+        );
         assert!(desc.contains("5/10"), "Expected 5/10 format, got: {}", desc);
     }
 
@@ -625,10 +637,30 @@ mod tests {
             threshold: 0.1,
         };
         let desc = failure.description();
-        assert!(desc.contains("Error rate exceeded:"), "Expected 'Error rate exceeded:' prefix, got: {}", desc);
-        assert!(desc.contains("3/20"), "Expected '3/20' format, got: {}", desc);
-        assert!(desc.contains("15.0%"), "Expected '15.0%' error rate, got: {}", desc);
-        assert!(desc.contains("threshold:"), "Expected 'threshold:' in description, got: {}", desc);
-        assert!(desc.contains("10.0%"), "Expected '10.0%' threshold, got: {}", desc);
+        assert!(
+            desc.contains("Error rate exceeded:"),
+            "Expected 'Error rate exceeded:' prefix, got: {}",
+            desc
+        );
+        assert!(
+            desc.contains("3/20"),
+            "Expected '3/20' format, got: {}",
+            desc
+        );
+        assert!(
+            desc.contains("15.0%"),
+            "Expected '15.0%' error rate, got: {}",
+            desc
+        );
+        assert!(
+            desc.contains("threshold:"),
+            "Expected 'threshold:' in description, got: {}",
+            desc
+        );
+        assert!(
+            desc.contains("10.0%"),
+            "Expected '10.0%' threshold, got: {}",
+            desc
+        );
     }
 }

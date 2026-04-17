@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use crate::reporting::gate::GateLevel;
 use crate::types::TaskCategory;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -82,7 +82,11 @@ impl SuiteDefinition {
 pub trait SuiteSelector: Send + Sync {
     fn select_suite(&self, name: &str) -> Option<SuiteDefinition>;
     fn list_suites(&self) -> Vec<SuiteName>;
-    fn filter_tasks(&self, suite: &SuiteDefinition, tasks: &[crate::types::Task]) -> Vec<crate::types::Task>;
+    fn filter_tasks(
+        &self,
+        suite: &SuiteDefinition,
+        tasks: &[crate::types::Task],
+    ) -> Vec<crate::types::Task>;
 }
 
 pub struct DefaultSuiteSelector {
@@ -116,8 +120,13 @@ impl SuiteSelector for DefaultSuiteSelector {
         self.suites.iter().map(|s| s.name.clone()).collect()
     }
 
-    fn filter_tasks(&self, suite: &SuiteDefinition, tasks: &[crate::types::Task]) -> Vec<crate::types::Task> {
-        tasks.iter()
+    fn filter_tasks(
+        &self,
+        suite: &SuiteDefinition,
+        tasks: &[crate::types::Task],
+    ) -> Vec<crate::types::Task> {
+        tasks
+            .iter()
             .filter(|t| suite.included_task_categories.contains(&t.category))
             .cloned()
             .collect()
@@ -144,7 +153,9 @@ mod tests {
         assert_eq!(suite.name, SuiteName::PrSmoke);
         assert_eq!(suite.name_str(), "pr-smoke");
         assert!(suite.description.contains("PR smoke"));
-        assert!(suite.included_task_categories.contains(&TaskCategory::Smoke));
+        assert!(suite
+            .included_task_categories
+            .contains(&TaskCategory::Smoke));
         assert!(suite.allowed_whitelists);
         assert!(!suite.allow_skipped);
         assert!(suite.allow_manual_check);
@@ -158,8 +169,12 @@ mod tests {
         assert_eq!(suite.name, SuiteName::NightlyFull);
         assert_eq!(suite.name_str(), "nightly-full");
         assert!(suite.description.contains("Nightly"));
-        assert!(suite.included_task_categories.contains(&TaskCategory::Smoke));
-        assert!(suite.included_task_categories.contains(&TaskCategory::Regression));
+        assert!(suite
+            .included_task_categories
+            .contains(&TaskCategory::Smoke));
+        assert!(suite
+            .included_task_categories
+            .contains(&TaskCategory::Regression));
         assert!(suite.allowed_whitelists);
         assert!(suite.allow_skipped);
         assert!(suite.allow_manual_check);
@@ -173,7 +188,9 @@ mod tests {
         assert_eq!(suite.name, SuiteName::ReleaseQualification);
         assert_eq!(suite.name_str(), "release-qualification");
         assert!(suite.description.contains("Release qualification"));
-        assert!(suite.included_task_categories.contains(&TaskCategory::Regression));
+        assert!(suite
+            .included_task_categories
+            .contains(&TaskCategory::Regression));
         assert!(!suite.allowed_whitelists);
         assert!(!suite.allow_skipped);
         assert!(!suite.allow_manual_check);
@@ -212,7 +229,9 @@ mod tests {
 
     #[test]
     fn test_default_suite_selector_filter_tasks() {
-        use crate::types::{AgentMode, EntryMode, ProviderMode, Severity, ExecutionPolicy, OnMissingDependency};
+        use crate::types::{
+            AgentMode, EntryMode, ExecutionPolicy, OnMissingDependency, ProviderMode, Severity,
+        };
         use crate::types::{Task, TaskInput};
 
         let selector = DefaultSuiteSelector::new();

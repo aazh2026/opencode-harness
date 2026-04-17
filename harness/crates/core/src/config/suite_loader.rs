@@ -25,7 +25,9 @@ pub enum ConfigError {
     #[error("Failed to parse JSON: {0}")]
     JsonParseError(#[from] serde_json::Error),
 
-    #[error("Invalid suite name '{0}': must be one of pr-smoke, nightly-full, release-qualification")]
+    #[error(
+        "Invalid suite name '{0}': must be one of pr-smoke, nightly-full, release-qualification"
+    )]
     InvalidSuiteName(String),
 
     #[error("Invalid task category '{0}': must be one of core, schema, integration, regression, smoke, performance, security")]
@@ -97,10 +99,7 @@ impl SuiteConfigLoader {
         let content = std::fs::read_to_string(path)?;
 
         // Detect format by extension
-        let ext = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
         match ext.to_lowercase().as_str() {
             "yaml" | "yml" => Self::load_from_str(&content),
@@ -157,9 +156,9 @@ impl SuiteConfigLoader {
 
                 Ok(SuiteDefinition {
                     name: name.clone(),
-                    description: cfg.description.unwrap_or_else(|| {
-                        format!("{:?} suite", name)
-                    }),
+                    description: cfg
+                        .description
+                        .unwrap_or_else(|| format!("{:?} suite", name)),
                     included_task_categories: categories,
                     allowed_whitelists: cfg.allowed_whitelists,
                     allow_skipped: cfg.allow_skipped,
@@ -183,17 +182,15 @@ impl SuiteConfigLoader {
     fn parse_task_categories(categories: &[String]) -> Result<Vec<TaskCategory>, ConfigError> {
         categories
             .iter()
-            .map(|c| {
-                match c.to_lowercase().as_str() {
-                    "core" => Ok(TaskCategory::Core),
-                    "schema" => Ok(TaskCategory::Schema),
-                    "integration" => Ok(TaskCategory::Integration),
-                    "regression" => Ok(TaskCategory::Regression),
-                    "smoke" => Ok(TaskCategory::Smoke),
-                    "performance" => Ok(TaskCategory::Performance),
-                    "security" => Ok(TaskCategory::Security),
-                    _ => Err(ConfigError::InvalidTaskCategory(c.clone())),
-                }
+            .map(|c| match c.to_lowercase().as_str() {
+                "core" => Ok(TaskCategory::Core),
+                "schema" => Ok(TaskCategory::Schema),
+                "integration" => Ok(TaskCategory::Integration),
+                "regression" => Ok(TaskCategory::Regression),
+                "smoke" => Ok(TaskCategory::Smoke),
+                "performance" => Ok(TaskCategory::Performance),
+                "security" => Ok(TaskCategory::Security),
+                _ => Err(ConfigError::InvalidTaskCategory(c.clone())),
             })
             .collect()
     }

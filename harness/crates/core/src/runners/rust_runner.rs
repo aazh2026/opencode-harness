@@ -1,5 +1,6 @@
 use crate::error::{ErrorType, Result};
 use crate::runners::artifact_persister::{ArtifactPersister, RunnerType};
+use crate::runners::binary_resolver::BinaryResolver;
 use crate::types::artifact::Artifact;
 use crate::types::capability_summary::CapabilitySummary;
 use crate::types::failure_classification::FailureClassification;
@@ -102,41 +103,30 @@ impl RustRunner {
     pub fn execute(&self, input: &RunnerInput) -> Result<RunnerOutput> {
         let start = Instant::now();
         let started_at = Utc::now();
-        let binary = if let Some(binary_path) = &input.binary_path {
-            if binary_path.exists() {
-                binary_path.clone()
-            } else {
+        let resolver = BinaryResolver::new();
+        let binary = match resolver.resolve_opencode_rs_with_override(input.binary_path.as_ref()) {
+            Ok(path) => path,
+            Err(e) => {
+                let err_msg = e.to_string();
+                let failure_kind = if err_msg.contains("does not exist")
+                    || err_msg.contains("Could not find binary")
+                {
+                    Some(FailureClassification::DependencyMissing)
+                } else {
+                    Some(FailureClassification::InfraFailure)
+                };
                 return self.build_error_output(
                     started_at,
                     Utc::now(),
                     input,
                     None,
                     format!(
-                        "Binary path '{}' does not exist for task '{}' (workspace: {})",
-                        binary_path.display(),
+                        "Binary resolution failed for task '{}' (workspace: {}): {}",
                         input.task.id,
-                        input.prepared_workspace_path.display()
+                        input.prepared_workspace_path.display(),
+                        err_msg
                     ),
-                    Some(FailureClassification::DependencyMissing),
-                );
-            }
-        } else {
-            let cmd_path = PathBuf::from(&input.task.input.command);
-            if cmd_path.exists() {
-                cmd_path
-            } else {
-                return self.build_error_output(
-                    started_at,
-                    Utc::now(),
-                    input,
-                    None,
-                    format!(
-                        "Command '{}' does not exist for task '{}' (workspace: {})",
-                        input.task.input.command,
-                        input.task.id,
-                        input.prepared_workspace_path.display()
-                    ),
-                    Some(FailureClassification::DependencyMissing),
+                    failure_kind,
                 );
             }
         };

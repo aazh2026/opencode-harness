@@ -4,15 +4,11 @@ use opencode_core::reporting::suite::{
 };
 use opencode_core::types::task::TaskCategory;
 use opencode_core::types::{
-    AgentMode, EntryMode, ExecutionPolicy, OnMissingDependency, ProviderMode, Severity,
-    Task, TaskInput,
+    AgentMode, EntryMode, ExecutionPolicy, OnMissingDependency, ProviderMode, Severity, Task,
+    TaskInput,
 };
 
-fn create_test_task(
-    id: &str,
-    category: TaskCategory,
-    execution_policy: ExecutionPolicy,
-) -> Task {
+fn create_test_task(id: &str, category: TaskCategory, execution_policy: ExecutionPolicy) -> Task {
     Task::new(
         id,
         format!("Test Task {}", id),
@@ -37,20 +33,31 @@ fn create_test_task(
 fn test_pr_smoke_suite_configuration() {
     let suite = SuiteDefinition::pr_smoke();
 
-    assert_eq!(suite.name, SuiteName::PrSmoke, "pr_smoke should have PrSmoke name");
-    assert_eq!(suite.name_str(), "pr-smoke", "pr_smoke should have string name 'pr-smoke'");
+    assert_eq!(
+        suite.name,
+        SuiteName::PrSmoke,
+        "pr_smoke should have PrSmoke name"
+    );
+    assert_eq!(
+        suite.name_str(),
+        "pr-smoke",
+        "pr_smoke should have string name 'pr-smoke'"
+    );
     assert!(
         suite.description.contains("PR smoke"),
         "pr_smoke description should mention PR smoke"
     );
 
     assert_eq!(
-        suite.gate_level, GateLevel::PR,
+        suite.gate_level,
+        GateLevel::PR,
         "pr_smoke should have GateLevel::PR"
     );
 
     assert!(
-        suite.included_task_categories.contains(&TaskCategory::Smoke),
+        suite
+            .included_task_categories
+            .contains(&TaskCategory::Smoke),
         "pr_smoke should include Smoke category"
     );
 
@@ -68,7 +75,8 @@ fn test_pr_smoke_suite_configuration() {
     );
 
     assert_eq!(
-        suite.artifact_retention_policy, ArtifactPolicy::OnFailure,
+        suite.artifact_retention_policy,
+        ArtifactPolicy::OnFailure,
         "pr_smoke should have OnFailure artifact retention"
     );
 }
@@ -78,11 +86,13 @@ fn test_nightly_full_suite_configuration() {
     let suite = SuiteDefinition::nightly_full();
 
     assert_eq!(
-        suite.name, SuiteName::NightlyFull,
+        suite.name,
+        SuiteName::NightlyFull,
         "nightly_full should have NightlyFull name"
     );
     assert_eq!(
-        suite.name_str(), "nightly-full",
+        suite.name_str(),
+        "nightly-full",
         "nightly_full should have string name 'nightly-full'"
     );
     assert!(
@@ -91,16 +101,21 @@ fn test_nightly_full_suite_configuration() {
     );
 
     assert_eq!(
-        suite.gate_level, GateLevel::Nightly,
+        suite.gate_level,
+        GateLevel::Nightly,
         "nightly_full should have GateLevel::Nightly"
     );
 
     assert!(
-        suite.included_task_categories.contains(&TaskCategory::Smoke),
+        suite
+            .included_task_categories
+            .contains(&TaskCategory::Smoke),
         "nightly_full should include Smoke category"
     );
     assert!(
-        suite.included_task_categories.contains(&TaskCategory::Regression),
+        suite
+            .included_task_categories
+            .contains(&TaskCategory::Regression),
         "nightly_full should include Regression category"
     );
 
@@ -118,7 +133,8 @@ fn test_nightly_full_suite_configuration() {
     );
 
     assert_eq!(
-        suite.artifact_retention_policy, ArtifactPolicy::Always,
+        suite.artifact_retention_policy,
+        ArtifactPolicy::Always,
         "nightly_full should have Always artifact retention"
     );
 }
@@ -128,11 +144,13 @@ fn test_release_qualification_suite_configuration() {
     let suite = SuiteDefinition::release_qualification();
 
     assert_eq!(
-        suite.name, SuiteName::ReleaseQualification,
+        suite.name,
+        SuiteName::ReleaseQualification,
         "release_qualification should have ReleaseQualification name"
     );
     assert_eq!(
-        suite.name_str(), "release-qualification",
+        suite.name_str(),
+        "release-qualification",
         "release_qualification should have string name 'release-qualification'"
     );
     assert!(
@@ -141,12 +159,15 @@ fn test_release_qualification_suite_configuration() {
     );
 
     assert_eq!(
-        suite.gate_level, GateLevel::Release,
+        suite.gate_level,
+        GateLevel::Release,
         "release_qualification should have GateLevel::Release"
     );
 
     assert!(
-        suite.included_task_categories.contains(&TaskCategory::Regression),
+        suite
+            .included_task_categories
+            .contains(&TaskCategory::Regression),
         "release_qualification should include Regression category"
     );
 
@@ -164,7 +185,8 @@ fn test_release_qualification_suite_configuration() {
     );
 
     assert_eq!(
-        suite.artifact_retention_policy, ArtifactPolicy::Always,
+        suite.artifact_retention_policy,
+        ArtifactPolicy::Always,
         "release_qualification should have Always artifact retention"
     );
 }
@@ -179,7 +201,8 @@ fn test_suite_selector_select_suite() {
         "select_suite should return Some for 'pr-smoke'"
     );
     assert_eq!(
-        pr_suite.unwrap().name, SuiteName::PrSmoke,
+        pr_suite.unwrap().name,
+        SuiteName::PrSmoke,
         "select_suite('pr-smoke') should return PrSmoke suite"
     );
 
@@ -189,7 +212,8 @@ fn test_suite_selector_select_suite() {
         "select_suite should return Some for 'nightly-full'"
     );
     assert_eq!(
-        nightly_suite.unwrap().name, SuiteName::NightlyFull,
+        nightly_suite.unwrap().name,
+        SuiteName::NightlyFull,
         "select_suite('nightly-full') should return NightlyFull suite"
     );
 
@@ -199,7 +223,8 @@ fn test_suite_selector_select_suite() {
         "select_suite should return Some for 'release-qualification'"
     );
     assert_eq!(
-        release_suite.unwrap().name, SuiteName::ReleaseQualification,
+        release_suite.unwrap().name,
+        SuiteName::ReleaseQualification,
         "select_suite('release-qualification') should return ReleaseQualification suite"
     );
 
@@ -215,7 +240,11 @@ fn test_suite_selector_list_suites() {
     let selector = DefaultSuiteSelector::new();
     let suites = selector.list_suites();
 
-    assert_eq!(suites.len(), 3, "list_suites should return exactly 3 suites");
+    assert_eq!(
+        suites.len(),
+        3,
+        "list_suites should return exactly 3 suites"
+    );
     assert!(
         suites.contains(&SuiteName::PrSmoke),
         "list_suites should contain PrSmoke"
@@ -242,12 +271,17 @@ fn test_filter_tasks_by_suite() {
     );
     let core_task = create_test_task("CORE-001", TaskCategory::Core, ExecutionPolicy::Blocked);
 
-    let all_tasks = vec![smoke_task.clone(), regression_task.clone(), core_task.clone()];
+    let all_tasks = vec![
+        smoke_task.clone(),
+        regression_task.clone(),
+        core_task.clone(),
+    ];
 
     let pr_suite = SuiteDefinition::pr_smoke();
     let filtered = selector.filter_tasks(&pr_suite, &all_tasks);
     assert_eq!(
-        filtered.len(), 1,
+        filtered.len(),
+        1,
         "pr_smoke filter should return only Smoke tasks"
     );
     assert_eq!(
@@ -258,7 +292,8 @@ fn test_filter_tasks_by_suite() {
     let nightly_suite = SuiteDefinition::nightly_full();
     let filtered = selector.filter_tasks(&nightly_suite, &all_tasks);
     assert_eq!(
-        filtered.len(), 2,
+        filtered.len(),
+        2,
         "nightly_full filter should return Smoke and Regression tasks"
     );
     assert!(
@@ -273,7 +308,8 @@ fn test_filter_tasks_by_suite() {
     let release_suite = SuiteDefinition::release_qualification();
     let filtered = selector.filter_tasks(&release_suite, &all_tasks);
     assert_eq!(
-        filtered.len(), 1,
+        filtered.len(),
+        1,
         "release_qualification filter should return only Regression tasks"
     );
     assert_eq!(

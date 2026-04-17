@@ -2,6 +2,7 @@ use crate::error::{ErrorType, Result};
 use crate::loaders::TaskLoader;
 use crate::reporting::suite::{DefaultSuiteSelector, SuiteDefinition, SuiteSelector};
 use crate::runners::artifact_persister::ArtifactPersister;
+use crate::runners::binary_resolver::BinaryResolver;
 use crate::runners::legacy_runner::{LegacyRunner, LegacyRunnerResult};
 use crate::runners::rust_runner::{RustRunner, RustRunnerResult};
 use crate::types::allowed_variance::AllowedVariance;
@@ -60,10 +61,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                 match selector.select_suite(suite_name) {
                     Some(s) => s,
                     None => {
-                        return Err(ErrorType::Runner(format!(
-                            "Unknown suite '{}'",
-                            suite_name
-                        )))
+                        return Err(ErrorType::Runner(format!("Unknown suite '{}'", suite_name)))
                     }
                 }
             }
@@ -130,13 +128,14 @@ impl<L: TaskLoader> DifferentialRunner<L> {
 
         let legacy_runner = LegacyRunner::new("legacy");
         let rust_runner = RustRunner::new("rust");
+        let (legacy_input, rust_input) = self.build_provider_inputs(input)?;
 
         info!("Executing legacy runner");
-        let legacy_result = legacy_runner.execute(input);
+        let legacy_result = legacy_runner.execute(&legacy_input);
         debug!("Legacy runner completed");
 
         info!("Executing rust runner");
-        let rust_result = rust_runner.execute(input);
+        let rust_result = rust_runner.execute(&rust_input);
         debug!("Rust runner completed");
 
         let verdict = self.determine_verdict_from_outputs(
@@ -310,15 +309,65 @@ impl<L: TaskLoader> DifferentialRunner<L> {
     }
 
     fn task_to_runner_input(&self, task: &Task) -> RunnerInput {
+        let prepared_workspace_path = if task.input.cwd == "/project" {
+            PathBuf::from(&task.fixture_project)
+        } else {
+            PathBuf::from(&task.input.cwd)
+        };
+
         RunnerInput::new(
             task.clone(),
-            std::path::PathBuf::from(&task.input.cwd),
+            prepared_workspace_path,
             HashMap::new(),
             task.timeout_seconds,
             None,
             task.provider_mode,
             crate::types::CaptureOptions::default(),
         )
+    }
+
+    fn build_provider_inputs(&self, input: &RunnerInput) -> Result<(RunnerInput, RunnerInput)> {
+        let resolver = BinaryResolver::new();
+        let legacy_binary = resolver.resolve_opencode()?;
+        let rust_binary = match resolver.resolve_opencode_rs() {
+            Ok(path) => path,
+            Err(_) => PathBuf::from("cargo"),
+        };
+
+        let legacy_input = input
+            .clone()
+            .with_provider_mode(crate::types::provider_mode::ProviderMode::OpenCode)
+            .with_binary_path(Some(legacy_binary));
+
+        let rust_input = if rust_binary == PathBuf::from("cargo") {
+            let mut rust_task = input.task.clone();
+            rust_task.input.args = vec![
+                "run".to_string(),
+                "-q".to_string(),
+                "-p".to_string(),
+                "opencode-cli".to_string(),
+                "--".to_string(),
+            ]
+            .into_iter()
+            .chain(rust_task.input.args.clone().into_iter())
+            .collect();
+
+            input
+                .clone()
+                .with_task(rust_task)
+                .with_provider_mode(crate::types::provider_mode::ProviderMode::OpenCodeRS)
+                .with_binary_path(Some(rust_binary))
+                .with_prepared_workspace_path(PathBuf::from(
+                    "/Users/openclaw/Documents/github/opencode-rs/opencode-rust",
+                ))
+        } else {
+            input
+                .clone()
+                .with_provider_mode(crate::types::provider_mode::ProviderMode::OpenCodeRS)
+                .with_binary_path(Some(rust_binary))
+        };
+
+        Ok((legacy_input, rust_input))
     }
 
     fn determine_verdict_from_outputs(
@@ -667,7 +716,11 @@ on_missing_dependency: Fail
         .unwrap();
 
         let result = runner.run_with_suite("pr-smoke", temp_dir.path());
-        assert!(result.is_ok(), "run_with_suite should find pr-smoke suite: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "run_with_suite should find pr-smoke suite: {:?}",
+            result.err()
+        );
     }
 
     #[test]
@@ -753,7 +806,12 @@ on_missing_dependency: Fail
         assert!(result.is_ok(), "run_with_suite failed: {:?}", result.err());
 
         let results = result.unwrap();
-        assert_eq!(results.len(), 1, "pr-smoke suite should only run smoke tasks, got {}", results.len());
+        assert_eq!(
+            results.len(),
+            1,
+            "pr-smoke suite should only run smoke tasks, got {}",
+            results.len()
+        );
         assert_eq!(results[0].task_id, "SMOKE-001");
     }
 
@@ -827,7 +885,12 @@ on_missing_dependency: Fail
         assert!(result.is_ok(), "run_with_suite failed: {:?}", result.err());
 
         let results = result.unwrap();
-        assert_eq!(results.len(), 2, "nightly-full suite should run both smoke and regression tasks, got {}", results.len());
+        assert_eq!(
+            results.len(),
+            2,
+            "nightly-full suite should run both smoke and regression tasks, got {}",
+            results.len()
+        );
         let task_ids: Vec<&str> = results.iter().map(|r| r.task_id.as_str()).collect();
         assert!(task_ids.contains(&"SMOKE-001"));
         assert!(task_ids.contains(&"REGR-001"));
@@ -903,7 +966,12 @@ on_missing_dependency: Fail
         assert!(result.is_ok(), "run_with_suite failed: {:?}", result.err());
 
         let results = result.unwrap();
-        assert_eq!(results.len(), 1, "release-qualification suite should only run regression tasks, got {}", results.len());
+        assert_eq!(
+            results.len(),
+            1,
+            "release-qualification suite should only run regression tasks, got {}",
+            results.len()
+        );
         assert_eq!(results[0].task_id, "REGR-001");
     }
 
@@ -943,7 +1011,10 @@ on_missing_dependency: Fail
         .unwrap();
 
         let result = runner_with_filter.run_with_suite("pr-smoke", temp_dir.path());
-        assert!(result.is_err(), "Should fail when suite_name doesn't match configured filter");
+        assert!(
+            result.is_err(),
+            "Should fail when suite_name doesn't match configured filter"
+        );
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("does not match configured suite filter"));
     }
@@ -983,22 +1054,38 @@ on_missing_dependency: Fail
         .unwrap();
 
         let result = runner.run_with_suite("pr-smoke", temp_dir.path());
-        assert!(result.is_ok(), "Without filter set, should use DefaultSuiteSelector: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Without filter set, should use DefaultSuiteSelector: {:?}",
+            result.err()
+        );
     }
 
     #[test]
     fn test_suite_filter_suite_definition_has_correct_categories() {
         let pr_smoke = SuiteDefinition::pr_smoke();
-        assert!(pr_smoke.included_task_categories.contains(&TaskCategory::Smoke));
-        assert!(!pr_smoke.included_task_categories.contains(&TaskCategory::Regression));
+        assert!(pr_smoke
+            .included_task_categories
+            .contains(&TaskCategory::Smoke));
+        assert!(!pr_smoke
+            .included_task_categories
+            .contains(&TaskCategory::Regression));
 
         let nightly = SuiteDefinition::nightly_full();
-        assert!(nightly.included_task_categories.contains(&TaskCategory::Smoke));
-        assert!(nightly.included_task_categories.contains(&TaskCategory::Regression));
+        assert!(nightly
+            .included_task_categories
+            .contains(&TaskCategory::Smoke));
+        assert!(nightly
+            .included_task_categories
+            .contains(&TaskCategory::Regression));
 
         let release = SuiteDefinition::release_qualification();
-        assert!(release.included_task_categories.contains(&TaskCategory::Regression));
-        assert!(!release.included_task_categories.contains(&TaskCategory::Smoke));
+        assert!(release
+            .included_task_categories
+            .contains(&TaskCategory::Regression));
+        assert!(!release
+            .included_task_categories
+            .contains(&TaskCategory::Smoke));
     }
 }
 

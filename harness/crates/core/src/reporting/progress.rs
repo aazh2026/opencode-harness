@@ -108,7 +108,8 @@ impl TaskTracker {
 
     pub fn get_running_tasks(&self) -> Vec<String> {
         let tasks = self.running_tasks.lock().unwrap();
-        tasks.iter()
+        tasks
+            .iter()
             .filter(|(_, status)| **status == TaskStatus::InProgress)
             .map(|(id, _)| id.clone())
             .collect()
