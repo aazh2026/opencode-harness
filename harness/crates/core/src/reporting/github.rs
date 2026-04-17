@@ -14,7 +14,6 @@ struct Annotation {
     message: String,
     file: Option<String>,
     line: Option<u32>,
-    column: Option<u32>,
 }
 
 impl GitHubAnnotations {
@@ -33,7 +32,6 @@ impl GitHubAnnotations {
             message: message.into(),
             file: None,
             line: None,
-            column: None,
         });
         self
     }
@@ -44,7 +42,6 @@ impl GitHubAnnotations {
             message: message.into(),
             file: Some(file.to_string()),
             line: Some(line),
-            column: None,
         });
         self
     }
@@ -55,7 +52,6 @@ impl GitHubAnnotations {
             message: message.into(),
             file: None,
             line: None,
-            column: None,
         });
         self
     }
@@ -66,7 +62,6 @@ impl GitHubAnnotations {
             message: message.into(),
             file: Some(file.to_string()),
             line: Some(line),
-            column: None,
         });
         self
     }
@@ -77,7 +72,6 @@ impl GitHubAnnotations {
             message: message.into(),
             file: None,
             line: None,
-            column: None,
         });
         self
     }
@@ -88,7 +82,6 @@ impl GitHubAnnotations {
             message: message.into(),
             file: Some(file.to_string()),
             line: Some(line),
-            column: None,
         });
         self
     }
