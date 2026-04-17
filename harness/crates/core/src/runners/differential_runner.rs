@@ -310,7 +310,12 @@ impl<L: TaskLoader> DifferentialRunner<L> {
 
     fn task_to_runner_input(&self, task: &Task) -> RunnerInput {
         let prepared_workspace_path = if task.input.cwd == "/project" {
-            PathBuf::from(&task.fixture_project)
+            let fixture_path = PathBuf::from(&task.fixture_project);
+            if fixture_path.exists() {
+                fixture_path
+            } else {
+                PathBuf::from("harness").join(&task.fixture_project)
+            }
         } else {
             PathBuf::from(&task.input.cwd)
         };
@@ -339,7 +344,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             .with_provider_mode(crate::types::provider_mode::ProviderMode::OpenCode)
             .with_binary_path(Some(legacy_binary));
 
-        let rust_input = if rust_binary == PathBuf::from("cargo") {
+        let rust_input = if rust_binary.to_string_lossy() == "cargo" {
             let mut rust_task = input.task.clone();
             rust_task.input.args = vec![
                 "run".to_string(),
@@ -349,7 +354,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                 "--".to_string(),
             ]
             .into_iter()
-            .chain(rust_task.input.args.clone().into_iter())
+            .chain(rust_task.input.args.clone())
             .collect();
 
             input

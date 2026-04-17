@@ -16,6 +16,7 @@ use std::process::{Command, Output, Stdio};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Instant;
+use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LegacyRunnerResult {
@@ -174,6 +175,16 @@ impl LegacyRunner {
         let exit_code = output.status.code();
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        info!(
+            "LegacyRunner executed task={} binary={} args={:?} cwd={} exit_code={:?} stdout_len={} stderr_len={}",
+            input.task.id,
+            binary.display(),
+            task_input.args,
+            input.prepared_workspace_path.display(),
+            exit_code,
+            stdout.len(),
+            stderr.len()
+        );
 
         let session_metadata = SessionMetadata::new(
             uuid::Uuid::new_v4().to_string(),

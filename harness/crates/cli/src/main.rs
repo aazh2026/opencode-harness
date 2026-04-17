@@ -5,6 +5,9 @@ use opencode_core::runners::DifferentialRunner;
 use std::path::PathBuf;
 use tracing::{error, info};
 
+mod report;
+use report::ReportCommand;
+
 #[derive(Parser)]
 #[command(name = "opencode-harness")]
 #[command(version, about, long_about = None)]
@@ -74,8 +77,15 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Some(Commands::Report { output: _ }) => {
-            info!("Report command not yet implemented");
+        Some(Commands::Report { output }) => {
+            let output_format = output.unwrap_or_else(|| "json".to_string());
+            match ReportCommand::execute(&output_format) {
+                Ok(()) => {}
+                Err(e) => {
+                    error!("Report error: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
         None => {
             info!("No command specified. Use --help for usage information.");

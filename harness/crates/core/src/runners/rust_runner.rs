@@ -11,12 +11,12 @@ use crate::types::task_status::TaskStatus;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io::Read;
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Instant;
+use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RustRunnerResult {
@@ -104,30 +104,63 @@ impl RustRunner {
         let start = Instant::now();
         let started_at = Utc::now();
         let resolver = BinaryResolver::new();
-        let binary = match resolver.resolve_opencode_rs_with_override(input.binary_path.as_ref()) {
-            Ok(path) => path,
-            Err(e) => {
-                let err_msg = e.to_string();
-                let failure_kind = if err_msg.contains("does not exist")
-                    || err_msg.contains("Could not find binary")
-                {
-                    Some(FailureClassification::DependencyMissing)
-                } else {
-                    Some(FailureClassification::InfraFailure)
-                };
-                return self.build_error_output(
-                    started_at,
-                    Utc::now(),
-                    input,
-                    None,
-                    format!(
-                        "Binary resolution failed for task '{}' (workspace: {}): {}",
-                        input.task.id,
-                        input.prepared_workspace_path.display(),
-                        err_msg
-                    ),
-                    failure_kind,
-                );
+        let binary = if let Some(binary_path) = input.binary_path.as_ref() {
+            if binary_path == &PathBuf::from("cargo") {
+                binary_path.clone()
+            } else {
+                match resolver.resolve_opencode_rs_with_override(Some(binary_path)) {
+                    Ok(path) => path,
+                    Err(e) => {
+                        let err_msg = e.to_string();
+                        let failure_kind = if err_msg.contains("does not exist")
+                            || err_msg.contains("Could not find binary")
+                        {
+                            Some(FailureClassification::DependencyMissing)
+                        } else {
+                            Some(FailureClassification::InfraFailure)
+                        };
+                        return self.build_error_output(
+                            started_at,
+                            Utc::now(),
+                            input,
+                            None,
+                            format!(
+                                "Binary resolution failed for task '{}' (workspace: {}): {}",
+                                input.task.id,
+                                input.prepared_workspace_path.display(),
+                                err_msg
+                            ),
+                            failure_kind,
+                        );
+                    }
+                }
+            }
+        } else {
+            match resolver.resolve_opencode_rs() {
+                Ok(path) => path,
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    let failure_kind = if err_msg.contains("does not exist")
+                        || err_msg.contains("Could not find binary")
+                    {
+                        Some(FailureClassification::DependencyMissing)
+                    } else {
+                        Some(FailureClassification::InfraFailure)
+                    };
+                    return self.build_error_output(
+                        started_at,
+                        Utc::now(),
+                        input,
+                        None,
+                        format!(
+                            "Binary resolution failed for task '{}' (workspace: {}): {}",
+                            input.task.id,
+                            input.prepared_workspace_path.display(),
+                            err_msg
+                        ),
+                        failure_kind,
+                    );
+                }
             }
         };
         let task = &input.task;
@@ -200,6 +233,16 @@ impl RustRunner {
         let exit_code = output.status.code();
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        info!(
+            "RustRunner executed task={} binary={} args={:?} cwd={} exit_code={:?} stdout_len={} stderr_len={}",
+            input.task.id,
+            binary.display(),
+            task_input.args,
+            input.prepared_workspace_path.display(),
+            exit_code,
+            stdout.len(),
+            stderr.len()
+        );
 
         let session_metadata = SessionMetadata::new(
             uuid::Uuid::new_v4().to_string(),
@@ -317,71 +360,32 @@ impl RustRunner {
         timeout_seconds: u64,
     ) -> Result<Output> {
         let (tx, rx) = mpsc::channel();
-
-        let mut cmd = Command::new(binary);
-        cmd.args(args)
-            .current_dir(cwd)
-            .envs(env_overrides)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        let mut child = match cmd.spawn() {
-            Ok(c) => c,
-            Err(e) => {
-                return Err(ErrorType::Runner(format!(
-                    "Failed to spawn '{}': {}",
-                    binary.display(),
-                    e
-                )));
-            }
-        };
-
-        let child_id = child.id();
+        let binary = binary.to_path_buf();
+        let args = args.to_vec();
+        let cwd = cwd.to_string();
+        let env_overrides = env_overrides.clone();
 
         thread::spawn(move || {
-            let exit_status = child.wait();
-            let stdout = child.stdout.take().map(|mut s| {
-                let mut buf = Vec::new();
-                let _ = s.read_to_end(&mut buf);
-                buf
-            });
-            let stderr = child.stderr.take().map(|mut s| {
-                let mut buf = Vec::new();
-                let _ = s.read_to_end(&mut buf);
-                buf
-            });
-            let _ = tx.send((exit_status, stdout, stderr));
+            let result = Command::new(&binary)
+                .args(&args)
+                .current_dir(&cwd)
+                .envs(&env_overrides)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .output()
+                .map_err(|e| {
+                    ErrorType::Runner(format!("Failed to execute '{}': {}", binary.display(), e))
+                });
+            let _ = tx.send(result);
         });
 
         match rx.recv_timeout(std::time::Duration::from_secs(timeout_seconds)) {
-            Ok((Ok(exit_status), stdout, stderr)) => Ok(Output {
-                status: exit_status,
-                stdout: stdout.unwrap_or_default(),
-                stderr: stderr.unwrap_or_default(),
-            }),
-            Ok((Err(e), _, _)) => Err(ErrorType::Runner(format!("Process wait error: {}", e))),
-            Err(mpsc::RecvTimeoutError::Timeout) => {
-                #[cfg(unix)]
-                {
-                    let _ = Command::new("kill")
-                        .arg("-9")
-                        .arg(child_id.to_string())
-                        .spawn();
-                }
-                #[cfg(windows)]
-                {
-                    use std::process::Command as WinCommand;
-                    let _ = WinCommand::new("taskkill")
-                        .arg("/F")
-                        .arg("/PID")
-                        .arg(child_id.to_string())
-                        .spawn();
-                }
-                Err(ErrorType::Timeout(format!(
-                    "Process timed out after {} seconds and was killed (pid: {})",
-                    timeout_seconds, child_id
-                )))
-            }
+            Ok(Ok(output)) => Ok(output),
+            Ok(Err(e)) => Err(e),
+            Err(mpsc::RecvTimeoutError::Timeout) => Err(ErrorType::Timeout(format!(
+                "Process timed out after {} seconds",
+                timeout_seconds
+            ))),
             Err(mpsc::RecvTimeoutError::Disconnected) => {
                 Err(ErrorType::Runner("Channel disconnected".to_string()))
             }
