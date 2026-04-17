@@ -11,7 +11,9 @@ pub use artifact_persister::{
     ArtifactDiff, ArtifactPersister, DiffReport, FileTreeDiff, FileTreeEntry, FileTreeEntryType,
     FileTreeSnapshot, MetadataJson, RunnerType,
 };
-pub use baseline_comparator::{BaselineComparator, BaselineComparisonResult};
+pub use baseline_comparator::{
+    BaselineComparator, BaselineComparisonResult, DefaultBaselineComparator,
+};
 pub use baseline_recorder::{BaselineRecorder, DefaultBaselineRecorder};
 pub use binary_resolver::BinaryResolver;
 pub use differential_runner::{DifferentialResult, DifferentialRunner};
