@@ -12,6 +12,9 @@ pub enum ErrorType {
     #[error("Runner error: {0}")]
     Runner(String),
 
+    #[error("Timeout error: {0}")]
+    Timeout(String),
+
     #[error("Environment error: {0}")]
     Environment(String),
 

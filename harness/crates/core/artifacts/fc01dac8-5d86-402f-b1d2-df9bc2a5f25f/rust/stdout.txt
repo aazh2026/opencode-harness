@@ -1,1 +1,0 @@
-cli_basic_fixture
