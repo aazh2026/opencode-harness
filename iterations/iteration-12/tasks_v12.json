@@ -106,7 +106,7 @@
       "priority": "P2",
       "title": "Create Event Contract",
       "description": "Define event stream contract covering event types, payloads, subscription lifecycle including subscription creation, event filtering, acknowledgment, and unsubscription.",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddUnitTest: verify contracts/events/event_contract.yaml exists and parses as valid YAML",
         "AddIntegrationTest: verify contract covers all event types (session, project, message, system)",

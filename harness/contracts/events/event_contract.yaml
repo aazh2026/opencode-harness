@@ -1,0 +1,488 @@
+contract_id: EVENT-CONTRACT-001
+name: Event Stream Contract
+version: 1.0.0
+description: Verifies event stream contract parity between opencode and opencode-rs covering event types, payloads, subscription lifecycle including subscription creation, event filtering, acknowledgment, and unsubscription. Follows CloudEvents specification v1.0.
+
+cloudevents_version: "1.0"
+spec_version: "1.0"
+
+event_types:
+  session:
+    description: Session lifecycle events
+    events:
+      - event_type: session.created
+        cloud_event_type: "io.opencode.session.created"
+        description: New session has been created
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          session_id:
+            type: string
+            description: Unique session identifier
+          project_id:
+            type: string
+            description: Associated project ID (if any)
+          agent_mode:
+            type: string
+            enum: [oneshot, interactive, build, plan, ask]
+          created_at:
+            type: string
+            format: date-time
+
+      - event_type: session.resumed
+        cloud_event_type: "io.opencode.session.resumed"
+        description: Existing session has been resumed
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          session_id:
+            type: string
+            description: Resumed session identifier
+          project_id:
+            type: string
+          resumed_at:
+            type: string
+            format: date-time
+
+      - event_type: session.updated
+        cloud_event_type: "io.opencode.session.updated"
+        description: Session state has been updated
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          session_id:
+            type: string
+          status:
+            type: string
+            enum: [new, active, waiting_approval, done, terminated]
+          updated_at:
+            type: string
+            format: date-time
+          changes:
+            type: object
+            description: Changed fields
+
+      - event_type: session.terminated
+        cloud_event_type: "io.opencode.session.terminated"
+        description: Session has been terminated
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          session_id:
+            type: string
+          reason:
+            type: string
+            enum: [user_requested, completed, timeout, error]
+          terminated_at:
+            type: string
+            format: date-time
+
+  project:
+    description: Project lifecycle events
+    events:
+      - event_type: project.created
+        cloud_event_type: "io.opencode.project.created"
+        description: New project has been created
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          project_id:
+            type: string
+          name:
+            type: string
+          path:
+            type: string
+          created_at:
+            type: string
+            format: date-time
+
+      - event_type: project.updated
+        cloud_event_type: "io.opencode.project.updated"
+        description: Project has been modified
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          project_id:
+            type: string
+          changes:
+            type: object
+          updated_at:
+            type: string
+            format: date-time
+
+      - event_type: project.deleted
+        cloud_event_type: "io.opencode.project.deleted"
+        description: Project has been deleted
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          project_id:
+            type: string
+          deleted_at:
+            type: string
+            format: date-time
+
+  message:
+    description: Message events
+    events:
+      - event_type: message.received
+        cloud_event_type: "io.opencode.message.received"
+        description: Message received by agent
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          message_id:
+            type: string
+          session_id:
+            type: string
+          content:
+            type: string
+          sender:
+            type: string
+            enum: [user, agent, system]
+          received_at:
+            type: string
+            format: date-time
+
+      - event_type: message.sent
+        cloud_event_type: "io.opencode.message.sent"
+        description: Message sent by agent
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          message_id:
+            type: string
+          session_id:
+            type: string
+          content:
+            type: string
+          recipient:
+            type: string
+          sent_at:
+            type: string
+            format: date-time
+
+      - event_type: message.acknowledged
+        cloud_event_type: "io.opencode.message.acknowledged"
+        description: Message acknowledged by recipient
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          message_id:
+            type: string
+          acknowledged_at:
+            type: string
+            format: date-time
+          status:
+            type: string
+            enum: [delivered, read, processed]
+
+  system:
+    description: System events
+    events:
+      - event_type: system.started
+        cloud_event_type: "io.opencode.system.started"
+        description: Server or system component started
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          component:
+            type: string
+            enum: [server, agent, runner]
+          version:
+            type: string
+          started_at:
+            type: string
+            format: date-time
+
+      - event_type: system.stopped
+        cloud_event_type: "io.opencode.system.stopped"
+        description: Server or system component stopped
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          component:
+            type: string
+            enum: [server, agent, runner]
+          reason:
+            type: string
+          stopped_at:
+            type: string
+            format: date-time
+
+      - event_type: system.error
+        cloud_event_type: "io.opencode.system.error"
+        description: System error occurred
+        mandatory_fields:
+          - id
+          - source
+          - specversion
+          - type
+          - time
+          - datacontenttype
+          - data
+        data_schema:
+          error_code:
+            type: string
+          error_message:
+            type: string
+          severity:
+            type: string
+            enum: [warning, error, critical]
+          occurred_at:
+            type: string
+            format: date-time
+          context:
+            type: object
+
+subscription:
+  lifecycle:
+    create:
+      endpoint: /events/subscribe
+      method: GET
+      description: Subscribe to event stream
+      parameters:
+        - name: event_types
+          type: array
+          required: false
+          description: Filter by event types
+        - name: session_id
+          type: string
+          required: false
+          description: Filter by session
+        - name: project_id
+          type: string
+          required: false
+          description: Filter by project
+      responses:
+        "200":
+          description: Event stream established
+          contentType: application/json
+        "401":
+          description: Unauthorized
+
+    update:
+      endpoint: /events/subscribe/{subscription_id}
+      method: PUT
+      description: Update subscription filters
+      parameters:
+        - name: subscription_id
+          type: string
+          required: true
+          in: path
+        - name: event_types
+          type: array
+          required: false
+          description: Updated event type filters
+      responses:
+        "200":
+          description: Subscription updated
+        "404":
+          description: Subscription not found
+
+    delete:
+      endpoint: /events/subscribe/{subscription_id}
+      method: DELETE
+      description: Unsubscribe from event stream
+      parameters:
+        - name: subscription_id
+          type: string
+          required: true
+          in: path
+      responses:
+        "204":
+          description: Unsubscribed successfully
+        "404":
+          description: Subscription not found
+
+  acknowledgment:
+    description: Event acknowledgment mechanism
+    modes:
+      - mode: automatic
+        description: Events acknowledged automatically on receipt
+      - mode: explicit
+        description: Events require explicit acknowledgment
+    acknowledgment_payload:
+      event_id:
+        type: string
+        required: true
+        description: ID of event being acknowledged
+      status:
+        type: string
+        enum: [received, processed, failed]
+        required: true
+      timestamp:
+        type: string
+        format: date-time
+        required: true
+
+delivery_guarantees:
+  at_least_once:
+    description: Events are delivered at least once
+    acknowledgment_required: true
+    retry_policy:
+      max_retries: 3
+      backoff_ms: 1000
+  exactly_once:
+    description: Events are delivered exactly once (with deduplication)
+    deduplication_id: required
+    retry_policy:
+      max_retries: 5
+      backoff_ms: 500
+
+filtering:
+  supported_operators:
+    - eq
+    - neq
+    - contains
+    - startswith
+    - endswith
+  filterable_attributes:
+    - event_type
+    - session_id
+    - project_id
+    - source
+    - time
+  examples:
+    - filter: "event_type eq 'session.created'"
+    - filter: "session_id eq 'abc123'"
+    - filter: "source startswith '/project/'"
+
+event_format:
+  content_type: application/json
+  encoding: utf-8
+  batch_supported: true
+  batch_max_size: 100
+
+assertions:
+  - type: event_type_coverage
+    severity: P0
+    description: All event types must be supported (session, project, message, system)
+
+  - type: payload_schema_valid
+    severity: P0
+    description: Each event type must have valid payload schema
+
+  - type: subscription_create
+    severity: P0
+    description: Subscription creation must succeed
+
+  - type: subscription_update
+    severity: P0
+    description: Subscription update must modify filters
+
+  - type: subscription_delete
+    severity: P0
+    description: Subscription deletion must succeed
+
+  - type: event_delivery
+    severity: P0
+    description: Events must be delivered to subscribers
+
+  - type: acknowledgment_received
+    severity: P1
+    description: Acknowledgment must be processed
+
+  - type: filtering_works
+    severity: P1
+    description: Event filtering must work correctly
+
+  - type: cloudevents_compliance
+    severity: P0
+    description: Events must follow CloudEvents spec
+
+verdict_rules:
+  all_events_supported: Pass
+  missing_event_type: Fail
+  invalid_payload: Fail
+  subscription_fails: Fail
+  delivery_fails: Error
+  ack_timeout: Warn
+
+allowed_variance:
+  timing_ms:
+    min: 0
+    max: 5000
+  event_ordering: "not guaranteed"
+
+severity_mapping:
+  missing_event_type: Fail
+  invalid_schema: Fail
+  subscription_create_fails: Fail
+  subscription_update_fails: Warn
+  subscription_delete_fails: Warn
+  delivery_timeout: Warn
+  ack_timeout: Warn
+  cloudevents_violation: Fail
