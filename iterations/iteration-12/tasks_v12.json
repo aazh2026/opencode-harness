@@ -1,0 +1,737 @@
+{
+  "tasks": [
+    {
+      "id": "H-001",
+      "priority": "P1",
+      "title": "Implement CLI Report command",
+      "description": "Replace 'not yet implemented' with full report generation. Implement report command that produces JSON, JUnit XML, and Markdown output formats with all ParityReport fields including gate evaluation results.",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify 'harness report --output json' produces valid JSON with all ParityReport fields",
+        "AddIntegrationTest: verify 'harness report --output junit' produces valid JUnit XML format with test results",
+        "AddIntegrationTest: verify 'harness report --output md' produces valid Markdown report with all sections",
+        "AddRegressionTest: ensure report generation includes gate evaluation result in output",
+        "AddErrorHandlingTest: verify report command handles missing data gracefully with proper error messages",
+        "RunTestSuite: execute report_schema_smoke_tests to validate all report formats"
+      ],
+      "test_commands": [
+        "cargo test report_schema_smoke_tests",
+        "cargo run -- report --output json",
+        "cargo run -- report --output junit",
+        "cargo run -- report --output md",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement ReportCommand in cli/src/commands/report.rs. Use serde_json for JSON serialization, quick-xml for JUnit XML, and pulldown-cmark for Markdown rendering. Gate evaluation should be included as a top-level field in all output formats.",
+      "dependencies": []
+    },
+    {
+      "id": "H-002",
+      "priority": "P1",
+      "title": "Create API Contract",
+      "description": "Define API contract YAML covering server lifecycle, /doc, auth, CORS, session/project interfaces, event subscription, message/command interface, file operations interface, and tool registration interface.",
+      "status": "done",
+      "test_criteria": [
+        "AddUnitTest: verify contracts/api/api_contract.yaml exists and parses as valid YAML",
+        "AddIntegrationTest: verify contract covers server startup/shutdown lifecycle endpoints",
+        "AddIntegrationTest: verify contract covers /doc endpoint specification and response schema",
+        "AddIntegrationTest: verify contract covers authentication flow including token refresh",
+        "AddIntegrationTest: verify contract covers CORS headers configuration and allowed origins",
+        "AddIntegrationTest: verify contract covers session management endpoints (create, resume, terminate, list)",
+        "AddIntegrationTest: verify contract covers project management endpoints (create, list, delete)",
+        "AddIntegrationTest: verify contract covers message/command interface request/response schemas",
+        "AddIntegrationTest: verify contract covers file operations interface (read, write, delete)",
+        "AddIntegrationTest: verify contract covers tool registration interface and tool discovery",
+        "AddIntegrationTest: verify contract covers event subscription mechanism and payload types"
+      ],
+      "test_commands": [
+        "test -f contracts/api/api_contract.yaml",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Create contracts/api/api_contract.yaml with OpenAPI 3.0 style specification. Include all endpoints, request/response schemas, authentication schemes, and error types. Document subscription event types and payloads.",
+      "dependencies": []
+    },
+    {
+      "id": "H-003",
+      "priority": "P1",
+      "title": "Expand API Tasks to 8-10",
+      "description": "Create 6 new API tasks (SMOKE-API-005 through SMOKE-API-010) to reach 10 total API tasks covering session create/resume, project list, message send, event subscribe, and tool list operations.",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify SMOKE-API-005 Session create via API creates new session and returns session_id",
+        "AddIntegrationTest: verify SMOKE-API-006 Session resume via API resumes existing session with valid session_id",
+        "AddIntegrationTest: verify SMOKE-API-007 Project list via API returns list of accessible projects",
+        "AddIntegrationTest: verify SMOKE-API-008 Message send via API sends message and receives response",
+        "AddIntegrationTest: verify SMOKE-API-009 Event subscribe via API establishes event subscription and receives events",
+        "AddIntegrationTest: verify SMOKE-API-010 Tool list via API returns list of registered tools",
+        "AddRegressionTest: ensure all 10 API tasks run successfully in sequence",
+        "RunTestSuite: execute all API smoke tests to verify 100% pass rate"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_tests",
+        "cargo test SMOKE-API-005 SMOKE-API-006 SMOKE-API-007 SMOKE-API-008 SMOKE-API-009 SMOKE-API-010",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Create 6 new integration tests in tests/api/. Each test should use the API client to make HTTP requests and verify responses. Follow existing API test patterns and naming conventions.",
+      "dependencies": [
+        "H-002"
+      ]
+    },
+    {
+      "id": "H-004",
+      "priority": "P1",
+      "title": "Create Recovery Tasks",
+      "description": "Create 3 recovery tasks (SMOKE-RECOVERY-001 through SMOKE-RECOVERY-003) covering session reconnect, interrupted operation recovery, and server restart handling scenarios.",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify SMOKE-RECOVERY-001 Session reconnect successfully reconnects to existing session after connection loss",
+        "AddIntegrationTest: verify SMOKE-RECOVERY-002 Interrupted operation recovery resumes operation after interruption without data loss",
+        "AddIntegrationTest: verify SMOKE-RECOVERY-003 Server restart handling correctly handles server restart and maintains session state",
+        "AddErrorHandlingTest: verify recovery mechanisms handle repeated connection failures gracefully",
+        "AddErrorHandlingTest: verify recovery handles corrupted session state appropriately",
+        "RunTestSuite: execute all recovery smoke tests to verify resilience"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-core smoke_recovery_tests",
+        "cargo test -p opencode-core recovery_error_handling_tests",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Create 3 new integration tests in tests/recovery/. Implement connection loss simulation, interruption injection, and server restart scenarios. Verify session state preservation and data integrity after recovery.",
+      "dependencies": [
+        "H-003"
+      ]
+    },
+    {
+      "id": "H-005",
+      "priority": "P2",
+      "title": "Create Event Contract",
+      "description": "Define event stream contract covering event types, payloads, subscription lifecycle including subscription creation, event filtering, acknowledgment, and unsubscription.",
+      "status": "todo",
+      "test_criteria": [
+        "AddUnitTest: verify contracts/events/event_contract.yaml exists and parses as valid YAML",
+        "AddIntegrationTest: verify contract covers all event types (session, project, message, system)",
+        "AddIntegrationTest: verify contract covers event payload schemas for each event type",
+        "AddIntegrationTest: verify contract covers subscription lifecycle (create, update, delete)",
+        "RunTestSuite: execute event contract validation tests"
+      ],
+      "test_commands": [
+        "test -f contracts/events/event_contract.yaml",
+        "cargo build",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Create contracts/events/event_contract.yaml documenting all event types, their payloads, subscription management, and delivery guarantees. Follow CloudEvents specification where applicable.",
+      "dependencies": []
+    },
+    {
+      "id": "H-006",
+      "priority": "P2",
+      "title": "Unify Report type naming",
+      "description": "Rename types/report.rs::Report to SimpleReport to avoid confusion with ParityReport. Update all references throughout the codebase.",
+      "status": "todo",
+      "test_criteria": [
+        "AddRegressionTest: ensure types/report.rs compiles after renaming Report to SimpleReport",
+        "AddRegressionTest: ensure all references to Report type in cli/, api/, and core/ are updated",
+        "AddRegressionTest: ensure cargo build succeeds without naming conflicts",
+        "AddRegressionTest: ensure cargo test passes with renamed type",
+        "RunTestSuite: execute all tests to ensure no regressions from rename"
+      ],
+      "test_commands": [
+        "cargo build",
+        "cargo test",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Rename Report struct to SimpleReport in types/report.rs. Search and replace all usages in cli/, api/, contracts/. Ensure no orphan references or stale imports remain.",
+      "dependencies": []
+    },
+    {
+      "id": "H-007",
+      "priority": "P2",
+      "title": "Externalize configuration",
+      "description": "Move hardcoded thresholds (pass_rate, timeouts) to config files. Create config schema and loading mechanism.",
+      "status": "todo",
+      "test_criteria": [
+        "AddRegressionTest: ensure pass_rate threshold is read from config file instead of hardcoded",
+        "AddRegressionTest: ensure timeout values are read from config file instead of hardcoded",
+        "AddRegressionTest: ensure default config values are used when config file is missing",
+        "AddErrorHandlingTest: verify application handles malformed config file gracefully",
+        "AddErrorHandlingTest: verify application handles missing config file gracefully",
+        "RunTestSuite: execute all tests with externalized configuration"
+      ],
+      "test_commands": [
+        "cargo build",
+        "cargo test",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Create config/ directory with YAML config files. Implement ConfigLoader to read from ~/.opencode/config.yaml. Replace all hardcoded thresholds with config lookups. Maintain backward compatibility with defaults.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-CLI-001",
+      "priority": "P1",
+      "title": "CLI help command displays usage",
+      "description": "CLI help command displays usage information for all available commands",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify 'harness help' displays usage information",
+        "AddIntegrationTest: verify 'harness <command> --help' shows command-specific help"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-cli smoke_cli_001",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-CLI-002",
+      "priority": "P1",
+      "title": "CLI version command displays version",
+      "description": "CLI version command displays version information",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify 'harness version' displays version string"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-cli smoke_cli_002",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-CLI-003",
+      "priority": "P1",
+      "title": "CLI serve command starts server",
+      "description": "CLI serve command starts the server in background mode",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify 'harness serve' starts server and accepts connections"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-cli smoke_cli_003",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-CLI-004",
+      "priority": "P1",
+      "title": "CLI stats command shows stats",
+      "description": "CLI stats command displays statistics about executed tests and operations",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify 'harness stats' displays statistics"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-cli smoke_cli_004",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-CLI-005",
+      "priority": "P1",
+      "title": "CLI session command manages sessions",
+      "description": "CLI session command creates, lists, switches, and terminates sessions",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify 'harness session create' creates new session",
+        "AddIntegrationTest: verify 'harness session list' lists all sessions",
+        "AddIntegrationTest: verify 'harness session switch' switches active session",
+        "AddIntegrationTest: verify 'harness session terminate' terminates session"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-cli smoke_cli_005",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-CLI-006",
+      "priority": "P1",
+      "title": "CLI export command exports data",
+      "description": "CLI export command exports test results and session data",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify 'harness export --format json' exports valid JSON",
+        "AddIntegrationTest: verify 'harness export --format csv' exports valid CSV"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-cli smoke_cli_006",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-API-001",
+      "priority": "P1",
+      "title": "API health endpoint returns status",
+      "description": "API health endpoint returns server health status",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify GET /health returns 200 with {\"status\": \"ok\"}"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_001",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-API-002",
+      "priority": "P1",
+      "title": "API status endpoint returns server status",
+      "description": "API status endpoint returns detailed server status information",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify GET /status returns server status with version and uptime"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_002",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-API-003",
+      "priority": "P1",
+      "title": "API version endpoint returns version info",
+      "description": "API version endpoint returns version information",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify GET /version returns version information"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_003",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-API-004",
+      "priority": "P1",
+      "title": "API metrics endpoint returns server metrics",
+      "description": "API metrics endpoint returns server metrics in Prometheus format",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify GET /metrics returns Prometheus-formatted metrics"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_004",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-API-005",
+      "priority": "P1",
+      "title": "Session create via API",
+      "description": "API endpoint to create a new session with specified configuration",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify POST /sessions creates new session and returns session_id",
+        "AddIntegrationTest: verify POST /sessions with valid config returns 201 Created",
+        "AddErrorHandlingTest: verify POST /sessions with invalid config returns 400 Bad Request"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_005",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement POST /sessions endpoint. Request body: {config: SessionConfig}. Response: {session_id: string, created_at: timestamp}.",
+      "dependencies": [
+        "H-002"
+      ]
+    },
+    {
+      "id": "SMOKE-API-006",
+      "priority": "P1",
+      "title": "Session resume via API",
+      "description": "API endpoint to resume an existing session by session_id",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify POST /sessions/{id}/resume resumes existing session",
+        "AddIntegrationTest: verify POST /sessions/{id}/resume with valid session_id returns session state",
+        "AddErrorHandlingTest: verify POST /sessions/{id}/resume with expired session_id returns 404"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_006",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement POST /sessions/{session_id}/resume endpoint. Returns current session state including workspace and history.",
+      "dependencies": [
+        "H-002"
+      ]
+    },
+    {
+      "id": "SMOKE-API-007",
+      "priority": "P1",
+      "title": "Project list via API",
+      "description": "API endpoint to list all accessible projects",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify GET /projects returns list of projects",
+        "AddIntegrationTest: verify GET /projects returns projects with correct metadata (id, name, created_at)",
+        "AddErrorHandlingTest: verify GET /projects with no projects returns empty array"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_007",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement GET /projects endpoint. Returns array of Project objects with id, name, path, and created_at fields.",
+      "dependencies": [
+        "H-002"
+      ]
+    },
+    {
+      "id": "SMOKE-API-008",
+      "priority": "P1",
+      "title": "Message send via API",
+      "description": "API endpoint to send a message to an active session",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify POST /sessions/{id}/messages sends message and returns response",
+        "AddIntegrationTest: verify POST /sessions/{id}/messages with valid content returns message response",
+        "AddErrorHandlingTest: verify POST /sessions/{id}/messages with empty content returns 400"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_008",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement POST /sessions/{session_id}/messages endpoint. Request: {content: string, context?: object}. Response: {message_id, response}.",
+      "dependencies": [
+        "H-002"
+      ]
+    },
+    {
+      "id": "SMOKE-API-009",
+      "priority": "P1",
+      "title": "Event subscribe via API",
+      "description": "API endpoint to subscribe to server-side events",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify POST /events/subscribe creates event subscription",
+        "AddIntegrationTest: verify POST /events/subscribe with event_types returns subscription_id",
+        "AddIntegrationTest: verify GET /events/{subscription_id} receives events",
+        "AddErrorHandlingTest: verify POST /events/subscribe with invalid event_types returns 400"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_009",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement POST /events/subscribe and GET /events/{subscription_id} endpoints. Subscription: {event_types: string[]}. Event: {type, payload, timestamp}.",
+      "dependencies": [
+        "H-002"
+      ]
+    },
+    {
+      "id": "SMOKE-API-010",
+      "priority": "P1",
+      "title": "Tool list via API",
+      "description": "API endpoint to list all registered tools",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify GET /tools returns list of registered tools",
+        "AddIntegrationTest: verify GET /tools returns tools with correct metadata (name, description, schema)",
+        "AddIntegrationTest: verify GET /tools/{name} returns specific tool details"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-api smoke_api_010",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement GET /tools and GET /tools/{name} endpoints. Returns array of Tool objects with name, description, input_schema, and output_schema.",
+      "dependencies": [
+        "H-002"
+      ]
+    },
+    {
+      "id": "SMOKE-PERM-001",
+      "priority": "P1",
+      "title": "Build permission writes files",
+      "description": "Build permission allows file system write operations",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify operations requiring BUILD permission can write files"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-perms smoke_perm_001",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-PERM-002",
+      "priority": "P1",
+      "title": "Plan permission reads without writing",
+      "description": "Plan permission allows read operations without file modifications",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify operations requiring PLAN permission can read files"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-perms smoke_perm_002",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-PERM-003",
+      "priority": "P1",
+      "title": "Ask permission queries without changes",
+      "description": "Ask permission allows queries without any file system changes",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify operations requiring ASK permission can query without changes"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-perms smoke_perm_003",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-PERM-004",
+      "priority": "P1",
+      "title": "Permission denied for restricted operations",
+      "description": "Restricted operations are denied when proper permission is not granted",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify operations without proper permission return permission denied error"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-perms smoke_perm_004",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-SESSION-001",
+      "priority": "P1",
+      "title": "Session create",
+      "description": "Session can be created with specified configuration",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify session creation with valid config succeeds",
+        "AddIntegrationTest: verify session_id is returned and unique"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-session smoke_session_001",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-SESSION-002",
+      "priority": "P1",
+      "title": "Session switch",
+      "description": "Active session can be switched to another existing session",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify switching from one session to another succeeds"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-session smoke_session_002",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-SESSION-003",
+      "priority": "P1",
+      "title": "Session terminate",
+      "description": "Session can be terminated and cleaned up",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify session termination removes session and cleans up resources"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-session smoke_session_003",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-SESSION-004",
+      "priority": "P1",
+      "title": "Session persist across restarts",
+      "description": "Session state persists across server restarts",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify session state is restored after server restart"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-session smoke_session_004",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-WS-001",
+      "priority": "P1",
+      "title": "Workspace create",
+      "description": "Workspace can be created in specified directory",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify workspace creation in empty directory succeeds"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-workspace smoke_ws_001",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-WS-002",
+      "priority": "P1",
+      "title": "Workspace file operations",
+      "description": "Workspace supports file read, write, and delete operations",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify file read operation returns correct content",
+        "AddIntegrationTest: verify file write operation persists content",
+        "AddIntegrationTest: verify file delete operation removes file"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-workspace smoke_ws_002",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-WS-003",
+      "priority": "P1",
+      "title": "Workspace git operations",
+      "description": "Workspace supports git init, add, commit, and status operations",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify git init initializes repository",
+        "AddIntegrationTest: verify git add and commit work correctly",
+        "AddIntegrationTest: verify git status shows correct state"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-workspace smoke_ws_003",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-WS-004",
+      "priority": "P1",
+      "title": "Workspace cleanup on exit",
+      "description": "Workspace is cleaned up properly when session exits",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify workspace cleanup removes temporary files on exit"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-workspace smoke_ws_004",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-WS-005",
+      "priority": "P1",
+      "title": "Workspace config preservation",
+      "description": "Workspace configuration is preserved across sessions",
+      "status": "done",
+      "test_criteria": [
+        "AddIntegrationTest: verify workspace config persists across session restart"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-workspace smoke_ws_005",
+        "cargo build --release"
+      ],
+      "impl_notes": "Completed in previous iteration.",
+      "dependencies": []
+    },
+    {
+      "id": "SMOKE-RECOVERY-001",
+      "priority": "P1",
+      "title": "Session reconnect",
+      "description": "Session can be reconnected after temporary connection loss",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify session reconnects successfully after connection interruption",
+        "AddIntegrationTest: verify session state is preserved during reconnection",
+        "AddErrorHandlingTest: verify session handles prolonged disconnection gracefully"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-recovery smoke_recovery_001",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement session reconnection logic. Simulate connection loss for 5-30 seconds and verify automatic reconnection. Verify no data loss or corruption.",
+      "dependencies": [
+        "H-004"
+      ]
+    },
+    {
+      "id": "SMOKE-RECOVERY-002",
+      "priority": "P1",
+      "title": "Interrupted operation recovery",
+      "description": "Operations interrupted by connection loss can be recovered and completed",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify interrupted file write operation resumes correctly",
+        "AddIntegrationTest: verify interrupted git operation can be completed after reconnection",
+        "AddErrorHandlingTest: verify partial operation state is handled correctly on recovery"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-recovery smoke_recovery_002",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement operation recovery mechanism. Track operation state and allow resumption. Verify idempotency of recovery operations.",
+      "dependencies": [
+        "H-004"
+      ]
+    },
+    {
+      "id": "SMOKE-RECOVERY-003",
+      "priority": "P1",
+      "title": "Server restart handling",
+      "description": "Client handles server restart and reconnects automatically",
+      "status": "todo",
+      "test_criteria": [
+        "AddIntegrationTest: verify client reconnects automatically after server restart",
+        "AddIntegrationTest: verify session state is preserved across server restart",
+        "AddIntegrationTest: verify pending operations are completed after restart"
+      ],
+      "test_commands": [
+        "cargo test -p opencode-recovery smoke_recovery_003",
+        "cargo build --release",
+        "cargo clippy -- -D warnings"
+      ],
+      "impl_notes": "Implement server restart detection and automatic reconnection. Verify session state persistence using persistent storage. Test with graceful and unclean shutdown scenarios.",
+      "dependencies": [
+        "H-004"
+      ]
+    }
+  ]
+}
