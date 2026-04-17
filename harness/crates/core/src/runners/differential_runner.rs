@@ -95,7 +95,12 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             (Err(e), Ok(rr)) => {
                 let runner = "LegacyRunner".to_string();
                 let reason = e.to_string();
-                error!("Legacy runner failed: {}", reason);
+                error!(
+                    "Legacy runner failed for task '{}' (workspace: {}): {}",
+                    input.task.id,
+                    input.prepared_workspace_path.display(),
+                    reason
+                );
                 let rust_paths = rr.artifact_paths.clone();
                 let failure_kind = if reason.contains("Binary resolution failed")
                     || reason.contains("does not exist")
@@ -108,7 +113,16 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                     task_id: input.task.id.clone(),
                     legacy_result: None,
                     rust_result: Some(rr.into()),
-                    verdict: ParityVerdict::Error { runner, reason },
+                    verdict: ParityVerdict::Error {
+                        runner: runner.clone(),
+                        reason: format!(
+                            "[{}] task '{}' (workspace: {}): {}",
+                            runner,
+                            input.task.id,
+                            input.prepared_workspace_path.display(),
+                            reason
+                        ),
+                    },
                     duration_ms,
                     diff_report_path: None,
                     verdict_path: None,
@@ -120,7 +134,12 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             (Ok(lr), Err(e)) => {
                 let runner = "RustRunner".to_string();
                 let reason = e.to_string();
-                error!("Rust runner failed: {}", reason);
+                error!(
+                    "Rust runner failed for task '{}' (workspace: {}): {}",
+                    input.task.id,
+                    input.prepared_workspace_path.display(),
+                    reason
+                );
                 let legacy_paths = lr.artifact_paths.clone();
                 let failure_kind = if reason.contains("does not exist") {
                     Some(FailureClassification::DependencyMissing)
@@ -131,7 +150,16 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                     task_id: input.task.id.clone(),
                     legacy_result: Some(lr.into()),
                     rust_result: None,
-                    verdict: ParityVerdict::Error { runner, reason },
+                    verdict: ParityVerdict::Error {
+                        runner: runner.clone(),
+                        reason: format!(
+                            "[{}] task '{}' (workspace: {}): {}",
+                            runner,
+                            input.task.id,
+                            input.prepared_workspace_path.display(),
+                            reason
+                        ),
+                    },
                     duration_ms,
                     diff_report_path: None,
                     verdict_path: None,
@@ -141,8 +169,19 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                 })
             }
             (Err(e1), Err(e2)) => {
-                let reason = format!("legacy: {}; rust: {}", e1, e2);
-                error!("Both runners failed: {}", reason);
+                let reason = format!(
+                    "[LegacyRunner] task '{}' (workspace: {}): {}; [RustRunner] task '{}' (workspace: {}): {}",
+                    input.task.id,
+                    input.prepared_workspace_path.display(),
+                    e1,
+                    input.task.id,
+                    input.prepared_workspace_path.display(),
+                    e2
+                );
+                error!(
+                    "Both runners failed for task '{}': {}",
+                    input.task.id, reason
+                );
                 let failure_kind = if reason.contains("does not exist") {
                     Some(FailureClassification::DependencyMissing)
                 } else {

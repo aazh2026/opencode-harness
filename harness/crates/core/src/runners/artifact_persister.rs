@@ -65,8 +65,9 @@ impl ArtifactPersister {
         for dir in dirs {
             fs::create_dir_all(dir).map_err(|e| {
                 ErrorType::Runner(format!(
-                    "Failed to create directory '{}': {}",
+                    "Failed to create artifact directory '{}' (run_id: {}): {}",
                     dir.display(),
+                    self.run_id,
                     e
                 ))
             })?;

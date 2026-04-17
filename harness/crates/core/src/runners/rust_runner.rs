@@ -111,7 +111,12 @@ impl RustRunner {
                     Utc::now(),
                     input,
                     None,
-                    format!("Binary path '{}' does not exist", binary_path.display()),
+                    format!(
+                        "Binary path '{}' does not exist for task '{}' (workspace: {})",
+                        binary_path.display(),
+                        input.task.id,
+                        input.prepared_workspace_path.display()
+                    ),
                     Some(FailureClassification::DependencyMissing),
                 );
             }
@@ -125,7 +130,12 @@ impl RustRunner {
                     Utc::now(),
                     input,
                     None,
-                    format!("Command '{}' does not exist", input.task.input.command),
+                    format!(
+                        "Command '{}' does not exist for task '{}' (workspace: {})",
+                        input.task.input.command,
+                        input.task.id,
+                        input.prepared_workspace_path.display()
+                    ),
                     Some(FailureClassification::DependencyMissing),
                 );
             }
@@ -164,7 +174,14 @@ impl RustRunner {
                     Utc::now(),
                     input,
                     Some(1),
-                    format!("Command execution failed: {}", msg),
+                    format!(
+                        "Command execution timed out for task '{}' (binary: {}, workspace: {}, timeout: {}s): {}",
+                        input.task.id,
+                        binary.display(),
+                        input.prepared_workspace_path.display(),
+                        input.timeout_seconds,
+                        msg
+                    ),
                     Some(FailureClassification::FlakySuspected),
                 );
             }
@@ -176,7 +193,13 @@ impl RustRunner {
                     Utc::now(),
                     input,
                     Some(1),
-                    format!("Command execution failed: {}", err_msg),
+                    format!(
+                        "Command execution failed for task '{}' (binary: {}, workspace: {}): {}",
+                        input.task.id,
+                        binary.display(),
+                        input.prepared_workspace_path.display(),
+                        err_msg
+                    ),
                     Some(failure),
                 );
             }

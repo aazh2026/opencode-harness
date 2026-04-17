@@ -106,7 +106,12 @@ impl LegacyRunner {
                     Utc::now(),
                     input,
                     None,
-                    format!("Binary resolution failed: {}", err_msg),
+                    format!(
+                        "Binary resolution failed for task '{}' (workspace: {}): {}",
+                        input.task.id,
+                        input.prepared_workspace_path.display(),
+                        err_msg
+                    ),
                     failure_kind,
                 );
             }
@@ -152,7 +157,13 @@ impl LegacyRunner {
                     Utc::now(),
                     input,
                     Some(1),
-                    format!("Command execution failed: {}", err_msg),
+                    format!(
+                        "Command execution failed for task '{}' (binary: {}, workspace: {}): {}",
+                        input.task.id,
+                        binary.display(),
+                        input.prepared_workspace_path.display(),
+                        err_msg
+                    ),
                     Some(failure),
                 );
             }

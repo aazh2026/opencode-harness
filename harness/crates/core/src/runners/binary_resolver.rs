@@ -67,9 +67,15 @@ impl BinaryResolver {
         if let Some(path) = self.find_in_paths(name) {
             return Ok(path);
         }
+        let search_paths = self
+            .search_paths
+            .iter()
+            .map(|p| p.display().to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
         Err(ErrorType::Runner(format!(
-            "Could not find binary '{}' in PATH or default locations",
-            name
+            "Could not find binary '{}' in PATH or default locations. Searched in: [{}]",
+            name, search_paths
         )))
     }
 
