@@ -38,14 +38,14 @@ fn test_reports_schema_is_valid_json() {
 }
 
 #[test]
-fn test_report_schema_defines_report_struct() {
+fn test_report_schema_defines_simple_report_struct() {
     let schema_path = get_reports_schema_path();
     let content = std::fs::read_to_string(&schema_path).unwrap();
     let schema: serde_json::Value = serde_json::from_str(&content).unwrap();
 
     let report_def = schema
-        .pointer("/definitions/Report")
-        .expect("Report definition should exist in schema");
+        .pointer("/definitions/SimpleReport")
+        .expect("SimpleReport definition should exist in schema");
     let props = report_def
         .pointer("/properties")
         .expect("Report should have properties");

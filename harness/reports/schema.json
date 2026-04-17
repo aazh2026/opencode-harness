@@ -32,7 +32,7 @@
         }
       }
     },
-    "Report": {
+    "SimpleReport": {
       "type": "object",
       "description": "Test execution report",
       "required": ["timestamp", "suite", "total", "passed", "failed", "skipped", "mismatches"],
