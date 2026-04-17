@@ -1,5 +1,6 @@
-use crate::error::Result;
+use crate::error::{ErrorType, Result};
 use crate::loaders::TaskLoader;
+use crate::reporting::suite::{DefaultSuiteSelector, SuiteDefinition, SuiteSelector};
 use crate::runners::artifact_persister::ArtifactPersister;
 use crate::runners::legacy_runner::{LegacyRunner, LegacyRunnerResult};
 use crate::runners::rust_runner::{RustRunner, RustRunnerResult};
@@ -17,11 +18,98 @@ use tracing::{debug, error, info, warn};
 
 pub struct DifferentialRunner<L: TaskLoader> {
     pub task_loader: L,
+    suite_filter: Option<SuiteDefinition>,
 }
 
 impl<L: TaskLoader> DifferentialRunner<L> {
     pub fn new(task_loader: L) -> Self {
-        Self { task_loader }
+        Self {
+            task_loader,
+            suite_filter: None,
+        }
+    }
+
+    /// Add a suite filter to the runner (builder pattern).
+    ///
+    /// # FR-309-01
+    pub fn with_suite_filter(mut self, suite: SuiteDefinition) -> Self {
+        self.suite_filter = Some(suite);
+        self
+    }
+
+    /// Run tasks filtered by a named suite.
+    ///
+    /// # FR-309-02
+    pub fn run_with_suite(
+        &self,
+        suite_name: &str,
+        task_dir: &Path,
+    ) -> Result<Vec<DifferentialResult>> {
+        // Determine suite to use
+        let suite_def = match &self.suite_filter {
+            Some(s) if s.name_str() == suite_name => s.clone(),
+            Some(s) => {
+                return Err(ErrorType::Runner(format!(
+                    "Suite '{}' does not match configured suite filter '{}'",
+                    suite_name,
+                    s.name_str()
+                )))
+            }
+            None => {
+                let selector = DefaultSuiteSelector::new();
+                match selector.select_suite(suite_name) {
+                    Some(s) => s,
+                    None => {
+                        return Err(ErrorType::Runner(format!(
+                            "Unknown suite '{}'",
+                            suite_name
+                        )))
+                    }
+                }
+            }
+        };
+
+        // Load all tasks from directory
+        let all_tasks = self.task_loader.load_from_dir(task_dir)?;
+
+        // Filter by suite's task categories
+        let filtered_tasks: Vec<Task> = all_tasks
+            .into_iter()
+            .filter(|t| suite_def.included_task_categories.contains(&t.category))
+            .collect();
+
+        debug!(
+            "Running {} tasks with suite '{}' (categories: {:?})",
+            filtered_tasks.len(),
+            suite_name,
+            suite_def.included_task_categories
+        );
+
+        let mut results = Vec::new();
+        for task in filtered_tasks {
+            let input = RunnerInput::new(
+                task.clone(),
+                PathBuf::from("."),
+                HashMap::new(),
+                300,
+                None,
+                crate::types::provider_mode::ProviderMode::OpenCode,
+                crate::types::capture_options::CaptureOptions::default(),
+            );
+            match self.execute(&input) {
+                Ok(result) => results.push(result),
+                Err(e) => {
+                    error!("Task execution failed for '{}': {:?}", task.id, e);
+                }
+            }
+        }
+
+        info!(
+            "Suite '{}' execution complete: {} tasks processed",
+            suite_name,
+            results.len()
+        );
+        Ok(results)
     }
 
     pub fn execute(&self, input: &RunnerInput) -> Result<DifferentialResult> {
