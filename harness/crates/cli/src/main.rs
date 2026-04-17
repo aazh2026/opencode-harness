@@ -38,17 +38,21 @@ fn run_task(task_path: &str) -> Result<(), Box<dyn std::error::Error>> {
         info!("Executed {} tasks from directory:", results.len());
         for result in &results {
             info!(
-                "  {}: exit_code={}, assertions_passed={}",
-                result.task_id, result.exit_code, result.assertions_passed
+                "  {}: verdict={:?}",
+                result.task_id, result.verdict
             );
         }
     } else if path.is_file() {
         let result = runner.execute_single(&path)?;
         info!("Task {} executed:", result.task_id);
-        info!("  exit_code: {}", result.exit_code);
-        info!("  stdout: {}", result.stdout);
-        info!("  stderr: {}", result.stderr);
-        info!("  assertions_passed: {}", result.assertions_passed);
+        info!("  verdict: {:?}", result.verdict);
+        info!("  duration_ms: {}", result.duration_ms);
+        if let Some(ref legacy) = result.legacy_result {
+            info!("  legacy exit_code: {:?}", legacy.exit_code);
+        }
+        if let Some(ref rust_res) = result.rust_result {
+            info!("  rust exit_code: {:?}", rust_res.exit_code);
+        }
     } else {
         error!(
             "Error: Path '{}' is neither a file nor a directory",

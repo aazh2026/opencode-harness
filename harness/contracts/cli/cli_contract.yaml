@@ -1,0 +1,43 @@
+contract_id: CLI-CONTRACT-001
+name: CLI Basic Execution Contract
+version: 1.0.0
+description: Verifies basic CLI command execution parity between opencode and opencode-rs
+
+entry_points:
+  - command: opencode
+    args: ["--help"]
+    expected_exit_codes: [0]
+    timeout_ms: 5000
+
+  - command: opencode
+    args: ["serve", "--help"]
+    expected_exit_codes: [0]
+    timeout_ms: 5000
+
+assertions:
+  - type: exit_code_match
+    severity: P0
+
+  - type: stdout_contains
+    patterns:
+      - "Usage:"
+      - "opencode"
+
+  - type: stderr_empty
+    severity: P1
+
+  - type: no_side_effects
+    severity: P2
+
+allowed_variance:
+  exit_code: []
+  timing_ms:
+    min: 0
+    max: 2000
+  output_patterns: []
+
+severity_mapping:
+  exit_code_mismatch: Fail
+  output_missing: Fail
+  timing_exceeded: Warn
+  unexpected_side_effect: Fail

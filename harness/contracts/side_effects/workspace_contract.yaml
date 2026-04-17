@@ -1,0 +1,40 @@
+contract_id: WORKSPACE-SIDE-EFFECT-001
+name: Workspace Side Effect Contract
+version: 1.0.0
+description: Verifies workspace file system changes parity
+
+snapshot_requirements:
+  before_execution:
+    - type: file_tree
+      paths: ["$WORKSPACE/**"]
+
+  after_execution:
+    - type: file_tree
+      paths: ["$WORKSPACE/**"]
+    - type: git_status
+    - type: git_diff
+
+assertions:
+  - type: target_files_modified
+    severity: P0
+    description: Target files must be modified
+
+  - type: no_non_target_files_modified
+    severity: P1
+    description: Non-target files must not be modified
+
+  - type: git_status_clean_before
+    severity: P2
+
+  - type: protected_directories_unchanged
+    protected_paths:
+      - "$WORKSPACE/.git"
+      - "$WORKSPACE/node_modules"
+      - "$WORKSPACE/.env"
+    severity: P0
+
+verdict_rules:
+  only_target_modified: Pass
+  extra_files_modified: Fail
+  protected_directory_modified: Fail
+  git_state_inconsistent: Warn

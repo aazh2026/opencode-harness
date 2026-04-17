@@ -1,0 +1,19 @@
+{
+  "run_id": "run-5bdd9559-360d-48df-b459-23c510b3a1b1",
+  "legacy_exit_code": 0,
+  "rust_exit_code": null,
+  "legacy_duration_ms": 2200,
+  "rust_duration_ms": 0,
+  "verdict": "Fail (ExitCode): Exit code mismatch: legacy=Some(0), rust=None",
+  "verdict_category": "ExitCode",
+  "legacy_stdout_size": 0,
+  "rust_stdout_size": 0,
+  "legacy_stderr_size": 106,
+  "rust_stderr_size": 72,
+  "artifacts_diff": {
+    "only_in_legacy": [],
+    "only_in_rust": [],
+    "in_both": []
+  },
+  "generated_at": "2026-04-17T07:13:33.308009Z"
+}

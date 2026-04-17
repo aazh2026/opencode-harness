@@ -1,0 +1,1 @@
+Command 'echo' does not exist for task 'TEST-DIR-002' (workspace: /tmp)

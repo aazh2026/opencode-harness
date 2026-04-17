@@ -1,0 +1,30 @@
+contract_id: PERMISSION-CONTRACT-001
+name: Permission Flow Contract
+version: 1.0.0
+description: Verifies permission prompts and agent authorization parity
+
+agent_modes:
+  - mode: Build
+    expected_permissions: ["file_write", "file_read", "git_write"]
+    restricted_actions: []
+
+  - mode: Plan
+    expected_permissions: ["file_read", "git_read"]
+    restricted_actions: ["file_write"]
+
+assertions:
+  - type: permission_prompt_appears
+    when: agent_attempts_restricted_action
+    severity: P0
+
+  - type: action_blocked_when_denied
+    severity: P0
+
+  - type: action_allowed_when_approved
+    severity: P0
+
+verdict_rules:
+  prompt_appears_both: Pass
+  prompt_appears_one_missing: Fail
+  behavior_differs: Fail
+  environment_blocks: Blocked
