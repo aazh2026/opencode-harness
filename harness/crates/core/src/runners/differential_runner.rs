@@ -597,6 +597,412 @@ impl From<RunnerOutput> for LegacyExecutionResult {
 }
 
 #[cfg(test)]
+mod suite_filter_tests {
+    use super::*;
+    use crate::loaders::DefaultTaskLoader;
+    use crate::reporting::suite::{SuiteDefinition, SuiteName};
+    use crate::types::TaskCategory;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_with_suite_filter_sets_suite_filter_correctly() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+        assert!(runner.suite_filter.is_none());
+
+        let suite = SuiteDefinition::pr_smoke();
+        let runner = runner.with_suite_filter(suite.clone());
+
+        assert!(runner.suite_filter.is_some());
+        assert_eq!(runner.suite_filter.unwrap().name, SuiteName::PrSmoke);
+    }
+
+    #[test]
+    fn test_with_suite_filter_overwrites_previous_filter() {
+        let loader = DefaultTaskLoader::new();
+        let suite_pr = SuiteDefinition::pr_smoke();
+        let suite_nightly = SuiteDefinition::nightly_full();
+
+        let runner = DifferentialRunner::new(loader)
+            .with_suite_filter(suite_pr.clone())
+            .with_suite_filter(suite_nightly.clone());
+
+        assert!(runner.suite_filter.is_some());
+        assert_eq!(runner.suite_filter.unwrap().name, SuiteName::NightlyFull);
+    }
+
+    #[test]
+    fn test_run_with_suite_looks_up_suite_by_name() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+
+        let temp_dir = TempDir::new().unwrap();
+        let task_yaml = temp_dir.path().join("task.yaml");
+        std::fs::write(
+            &task_yaml,
+            r#"
+id: TEST-LOOKUP-001
+title: Lookup Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Test suite lookup
+expected_outcome: Works
+preconditions:
+  - echo exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["hello"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+        )
+        .unwrap();
+
+        let result = runner.run_with_suite("pr-smoke", temp_dir.path());
+        assert!(result.is_ok(), "run_with_suite should find pr-smoke suite: {:?}", result.err());
+    }
+
+    #[test]
+    fn test_run_with_suite_returns_error_for_unknown_suite() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+
+        let temp_dir = TempDir::new().unwrap();
+
+        let result = runner.run_with_suite("nonexistent-suite", temp_dir.path());
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Unknown suite") || err_msg.contains("nonexistent"));
+    }
+
+    #[test]
+    fn test_run_with_suite_filters_tasks_by_included_task_categories() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+
+        let temp_dir = TempDir::new().unwrap();
+
+        std::fs::write(
+            temp_dir.path().join("smoke-task.yaml"),
+            r#"
+id: SMOKE-001
+title: Smoke Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Smoke test task
+expected_outcome: Works
+preconditions:
+  - echo exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["smoke"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+        )
+        .unwrap();
+
+        std::fs::write(
+            temp_dir.path().join("regression-task.yaml"),
+            r#"
+id: REGR-001
+title: Regression Test
+category: regression
+fixture_project: fixtures/projects/cli-basic
+description: Regression test task
+expected_outcome: Works
+preconditions:
+  - echo exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["regression"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+        )
+        .unwrap();
+
+        let pr_smoke_suite = SuiteDefinition::pr_smoke();
+        let runner_with_filter = runner.with_suite_filter(pr_smoke_suite);
+
+        let result = runner_with_filter.run_with_suite("pr-smoke", temp_dir.path());
+        assert!(result.is_ok(), "run_with_suite failed: {:?}", result.err());
+
+        let results = result.unwrap();
+        assert_eq!(results.len(), 1, "pr-smoke suite should only run smoke tasks, got {}", results.len());
+        assert_eq!(results[0].task_id, "SMOKE-001");
+    }
+
+    #[test]
+    fn test_run_with_suite_nightly_full_includes_both_smoke_and_regression() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+
+        let temp_dir = TempDir::new().unwrap();
+
+        std::fs::write(
+            temp_dir.path().join("smoke-task.yaml"),
+            r#"
+id: SMOKE-001
+title: Smoke Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Smoke test task
+expected_outcome: Works
+preconditions:
+  - echo exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["smoke"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+        )
+        .unwrap();
+
+        std::fs::write(
+            temp_dir.path().join("regression-task.yaml"),
+            r#"
+id: REGR-001
+title: Regression Test
+category: regression
+fixture_project: fixtures/projects/cli-basic
+description: Regression test task
+expected_outcome: Works
+preconditions:
+  - echo exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["regression"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+        )
+        .unwrap();
+
+        let nightly_suite = SuiteDefinition::nightly_full();
+        let runner_with_filter = runner.with_suite_filter(nightly_suite);
+
+        let result = runner_with_filter.run_with_suite("nightly-full", temp_dir.path());
+        assert!(result.is_ok(), "run_with_suite failed: {:?}", result.err());
+
+        let results = result.unwrap();
+        assert_eq!(results.len(), 2, "nightly-full suite should run both smoke and regression tasks, got {}", results.len());
+        let task_ids: Vec<&str> = results.iter().map(|r| r.task_id.as_str()).collect();
+        assert!(task_ids.contains(&"SMOKE-001"));
+        assert!(task_ids.contains(&"REGR-001"));
+    }
+
+    #[test]
+    fn test_run_with_suite_release_qualification_only_regression() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+
+        let temp_dir = TempDir::new().unwrap();
+
+        std::fs::write(
+            temp_dir.path().join("smoke-task.yaml"),
+            r#"
+id: SMOKE-001
+title: Smoke Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Smoke test task
+expected_outcome: Works
+preconditions:
+  - echo exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["smoke"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+        )
+        .unwrap();
+
+        std::fs::write(
+            temp_dir.path().join("regression-task.yaml"),
+            r#"
+id: REGR-001
+title: Regression Test
+category: regression
+fixture_project: fixtures/projects/cli-basic
+description: Regression test task
+expected_outcome: Works
+preconditions:
+  - echo exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["regression"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+        )
+        .unwrap();
+
+        let release_suite = SuiteDefinition::release_qualification();
+        let runner_with_filter = runner.with_suite_filter(release_suite);
+
+        let result = runner_with_filter.run_with_suite("release-qualification", temp_dir.path());
+        assert!(result.is_ok(), "run_with_suite failed: {:?}", result.err());
+
+        let results = result.unwrap();
+        assert_eq!(results.len(), 1, "release-qualification suite should only run regression tasks, got {}", results.len());
+        assert_eq!(results[0].task_id, "REGR-001");
+    }
+
+    #[test]
+    fn test_run_with_suite_respects_configured_suite_filter() {
+        let loader = DefaultTaskLoader::new();
+        let suite_nightly = SuiteDefinition::nightly_full();
+        let runner_with_filter = DifferentialRunner::new(loader).with_suite_filter(suite_nightly);
+
+        let temp_dir = TempDir::new().unwrap();
+        std::fs::write(
+            temp_dir.path().join("task.yaml"),
+            r#"
+id: TEST-FILTER-001
+title: Filter Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Test suite filter enforcement
+expected_outcome: Works
+preconditions:
+  - echo exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["hello"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+        )
+        .unwrap();
+
+        let result = runner_with_filter.run_with_suite("pr-smoke", temp_dir.path());
+        assert!(result.is_err(), "Should fail when suite_name doesn't match configured filter");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("does not match configured suite filter"));
+    }
+
+    #[test]
+    fn test_run_with_suite_without_filter_uses_default_selector() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+
+        let temp_dir = TempDir::new().unwrap();
+        std::fs::write(
+            temp_dir.path().join("task.yaml"),
+            r#"
+id: TEST-DEFAULT-001
+title: Default Selector Test
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Test default suite selector
+expected_outcome: Works
+preconditions:
+  - echo exists
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["hello"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+        )
+        .unwrap();
+
+        let result = runner.run_with_suite("pr-smoke", temp_dir.path());
+        assert!(result.is_ok(), "Without filter set, should use DefaultSuiteSelector: {:?}", result.err());
+    }
+
+    #[test]
+    fn test_suite_filter_suite_definition_has_correct_categories() {
+        let pr_smoke = SuiteDefinition::pr_smoke();
+        assert!(pr_smoke.included_task_categories.contains(&TaskCategory::Smoke));
+        assert!(!pr_smoke.included_task_categories.contains(&TaskCategory::Regression));
+
+        let nightly = SuiteDefinition::nightly_full();
+        assert!(nightly.included_task_categories.contains(&TaskCategory::Smoke));
+        assert!(nightly.included_task_categories.contains(&TaskCategory::Regression));
+
+        let release = SuiteDefinition::release_qualification();
+        assert!(release.included_task_categories.contains(&TaskCategory::Regression));
+        assert!(!release.included_task_categories.contains(&TaskCategory::Smoke));
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::loaders::DefaultTaskLoader;
