@@ -1,0 +1,35 @@
+id: SMOKE-RECOVERY-001
+title: Session reconnect successfully reconnects to existing session after connection loss
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode can reconnect to an existing session after simulated connection loss
+expected_outcome: Session reconnect succeeds, preserving session state and allowing continued operation
+preconditions:
+  - opencode binary exists
+  - session support enabled
+entry_mode: Recovery
+agent_mode: Interactive
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - session
+    - reconnect
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "reconnected"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Critical
+tags:
+  - smoke
+  - recovery
+  - session
+  - reconnect
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Blocked

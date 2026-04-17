@@ -1,0 +1,35 @@
+id: SMOKE-RECOVERY-002
+title: Interrupted operation recovery resumes operation after interruption without data loss
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode can resume an interrupted operation without data loss
+expected_outcome: Operation resumes from interruption point, preserving all prior work and state
+preconditions:
+  - opencode binary exists
+  - session support enabled
+entry_mode: Recovery
+agent_mode: Interactive
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - session
+    - resume
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "resumed"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Critical
+tags:
+  - smoke
+  - recovery
+  - interruption
+  - resume
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Blocked

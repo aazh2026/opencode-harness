@@ -1,0 +1,35 @@
+id: SMOKE-RECOVERY-003
+title: Server restart handling correctly handles server restart and maintains session state
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify that opencode correctly handles server restart and maintains session state
+expected_outcome: Server restart is handled gracefully, session state is preserved and consistent
+preconditions:
+  - opencode binary exists
+  - server mode available
+entry_mode: Recovery
+agent_mode: Interactive
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - server
+    - restart
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "restarted"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Critical
+tags:
+  - smoke
+  - recovery
+  - server
+  - restart
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Blocked

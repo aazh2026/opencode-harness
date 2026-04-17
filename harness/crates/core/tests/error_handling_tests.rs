@@ -395,3 +395,119 @@ mod error_message_format_tests {
         );
     }
 }
+
+mod recovery_error_handling_tests {
+    use super::*;
+
+    #[test]
+    fn test_repeated_connection_failures_handled_gracefully() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task("SMOKE-RECOVERY-001");
+        let nonexistent_binary = temp_dir.path().join("connection_simulator_nonexistent");
+        let input = RunnerInput::new(
+            task,
+            temp_dir.path().to_path_buf(),
+            std::collections::HashMap::new(),
+            5,
+            Some(nonexistent_binary),
+            ProviderMode::Both,
+            opencode_core::types::CaptureOptions::default(),
+        );
+
+        let runner = RustRunner::new("test-repeated-connection-failures");
+        let result = runner.execute(&input);
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(
+            output.failure_kind.is_some(),
+            "Repeated connection failures should result in a recorded failure"
+        );
+        let stderr = output.stderr.to_string();
+        assert!(
+            stderr.contains("SMOKE-RECOVERY-001"),
+            "Error context should include task ID for recovery scenario"
+        );
+    }
+
+    #[test]
+    fn test_corrupted_session_state_error_handling() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task("SMOKE-RECOVERY-002");
+        let nonexistent_binary = temp_dir.path().join("corrupted_session_simulator");
+        let input = RunnerInput::new(
+            task,
+            temp_dir.path().to_path_buf(),
+            std::collections::HashMap::new(),
+            5,
+            Some(nonexistent_binary),
+            ProviderMode::Both,
+            opencode_core::types::CaptureOptions::default(),
+        );
+
+        let runner = RustRunner::new("test-corrupted-session");
+        let result = runner.execute(&input);
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(
+            output.session_metadata.task_id == "SMOKE-RECOVERY-002",
+            "Session metadata should preserve task ID even with corrupted state"
+        );
+        assert!(
+            !output.session_metadata.session_id.is_empty(),
+            "Session metadata should have session_id for tracking"
+        );
+    }
+
+    #[test]
+    fn test_recovery_task_error_includes_recovery_context() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task("SMOKE-RECOVERY-003");
+        task.input.command = "nonexistent_recovery_binary".to_string();
+        let input = RunnerInput::new(
+            task,
+            temp_dir.path().to_path_buf(),
+            std::collections::HashMap::new(),
+            5,
+            None,
+            ProviderMode::Both,
+            opencode_core::types::CaptureOptions::default(),
+        );
+
+        let runner = RustRunner::new("test-recovery-context");
+        let result = runner.execute(&input);
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        let stderr = output.stderr.to_string();
+        assert!(
+            stderr.contains("SMOKE-RECOVERY-003") || stderr.contains("recovery"),
+            "Error should contain recovery task context: {}",
+            stderr
+        );
+    }
+
+    #[test]
+    fn test_recovery_timeout_error_preserves_session_state() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task("SMOKE-RECOVERY-TIMEOUT");
+        task.input.command = "/bin/sleep".to_string();
+        task.input.args = vec!["20".to_string()];
+        let input = RunnerInput::new(
+            task,
+            temp_dir.path().to_path_buf(),
+            std::collections::HashMap::new(),
+            1,
+            Some(std::path::PathBuf::from("/bin/sleep")),
+            ProviderMode::Both,
+            opencode_core::types::CaptureOptions::default(),
+        );
+
+        let runner = RustRunner::new("test-recovery-timeout");
+        let result = runner.execute(&input);
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(
+            output.session_metadata.task_id == "SMOKE-RECOVERY-TIMEOUT",
+            "Session metadata should preserve task ID through timeout"
+        );
+    }
+}

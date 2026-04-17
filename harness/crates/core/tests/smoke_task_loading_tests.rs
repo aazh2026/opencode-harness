@@ -40,6 +40,12 @@ fn get_api_tasks_dir() -> PathBuf {
     path
 }
 
+fn get_recovery_tasks_dir() -> PathBuf {
+    let mut path = get_tasks_dir();
+    path.push("recovery");
+    path
+}
+
 mod smoke_cli_tests {
     use super::*;
 
@@ -535,6 +541,105 @@ mod smoke_api_tests {
     }
 }
 
+mod smoke_recovery_tests {
+    use super::*;
+
+    #[test]
+    fn task_loader_can_load_all_smoke_recovery_tasks() {
+        let loader = DefaultTaskLoader::new();
+        let tasks = loader
+            .load_from_dir(&get_recovery_tasks_dir())
+            .expect("Should be able to load recovery tasks directory");
+
+        assert!(
+            !tasks.is_empty(),
+            "Should have loaded at least one recovery smoke task"
+        );
+
+        let recovery_task_ids: Vec<&str> = tasks
+            .iter()
+            .filter(|t| t.id.starts_with("SMOKE-RECOVERY-"))
+            .map(|t| t.id.as_str())
+            .collect();
+
+        assert_eq!(
+            recovery_task_ids.len(),
+            tasks.len(),
+            "All loaded tasks should be SMOKE-RECOVERY-* tasks"
+        );
+    }
+
+    #[test]
+    fn all_smoke_recovery_tasks_have_valid_schema() {
+        let loader = DefaultTaskLoader::new();
+        let validator = DefaultTaskSchemaValidator::new();
+        let tasks = loader
+            .load_from_dir(&get_recovery_tasks_dir())
+            .expect("Should be able to load recovery tasks directory");
+
+        for task in &tasks {
+            let result = validator.validate(task);
+            assert!(
+                result.is_ok(),
+                "Task {} should pass schema validation: {:?}",
+                task.id,
+                result
+            );
+        }
+    }
+
+    #[test]
+    fn all_smoke_recovery_tasks_have_recovery_entry_mode() {
+        let loader = DefaultTaskLoader::new();
+        let tasks = loader
+            .load_from_dir(&get_recovery_tasks_dir())
+            .expect("Should be able to load recovery tasks directory");
+
+        for task in &tasks {
+            assert_eq!(
+                task.entry_mode,
+                EntryMode::Recovery,
+                "Task {} should have Recovery entry mode",
+                task.id
+            );
+        }
+    }
+
+    #[test]
+    fn all_smoke_recovery_tasks_belong_to_smoke_category() {
+        let loader = DefaultTaskLoader::new();
+        let tasks = loader
+            .load_from_dir(&get_recovery_tasks_dir())
+            .expect("Should be able to load recovery tasks directory");
+
+        for task in &tasks {
+            assert_eq!(
+                task.category,
+                TaskCategory::Smoke,
+                "Task {} should belong to Smoke category",
+                task.id
+            );
+        }
+    }
+
+    #[test]
+    fn smoke_recovery_tasks_load_count_matches_files() {
+        let loader = DefaultTaskLoader::new();
+        let tasks = loader
+            .load_from_dir(&get_recovery_tasks_dir())
+            .expect("Should be able to load recovery tasks directory");
+
+        let expected_count = 3;
+        assert_eq!(
+            tasks.len(),
+            expected_count,
+            "Expected {} SMOKE-RECOVERY-* tasks, got {}",
+            expected_count,
+            tasks.len()
+        );
+    }
+}
+
 mod smoke_task_loading_integration_tests {
     use super::*;
 
@@ -557,16 +662,20 @@ mod smoke_task_loading_integration_tests {
         let api_tasks = loader
             .load_from_dir(&get_api_tasks_dir())
             .expect("Should be able to load API tasks");
+        let recovery_tasks = loader
+            .load_from_dir(&get_recovery_tasks_dir())
+            .expect("Should be able to load recovery tasks");
 
         let total_smoke_tasks = cli_tasks.len()
             + ws_tasks.len()
             + session_tasks.len()
             + perm_tasks.len()
-            + api_tasks.len();
+            + api_tasks.len()
+            + recovery_tasks.len();
 
         assert_eq!(
-            total_smoke_tasks, 29,
-            "Expected 29 total smoke tasks (6 CLI + 5 WS + 4 SESSION + 4 PERM + 10 API), got {}",
+            total_smoke_tasks, 32,
+            "Expected 32 total smoke tasks (6 CLI + 5 WS + 4 SESSION + 4 PERM + 10 API + 3 RECOVERY), got {}",
             total_smoke_tasks
         );
     }
@@ -582,6 +691,7 @@ mod smoke_task_loading_integration_tests {
             get_session_tasks_dir(),
             get_permissions_tasks_dir(),
             get_api_tasks_dir(),
+            get_recovery_tasks_dir(),
         ];
 
         for dir in &dirs {
