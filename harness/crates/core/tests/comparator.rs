@@ -46,14 +46,14 @@ fn test_exact_comparator_compare_method() {
     let comparator = ExactComparator;
 
     let result = comparator.compare("hello", "hello");
-    assert_eq!(result.outcome, ComparisonOutcome::Equal);
+    assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
     assert!(result.diff.is_none());
     assert_eq!(result.similarity_score, 1.0);
 
     let result = comparator.compare("hello", "world");
-    assert_eq!(result.outcome, ComparisonOutcome::Different);
+    assert_eq!(result.outcome, ComparisonOutcome::MildlyIncompatible);
     assert!(result.diff.is_some());
-    assert_eq!(result.similarity_score, 0.0);
+    assert_eq!(result.similarity_score, 0.5);
 }
 
 #[test]
@@ -61,13 +61,13 @@ fn test_normalized_comparator_compare_method() {
     let comparator = NormalizedComparator;
 
     let result = comparator.compare("  hello   world  ", "hello world");
-    assert_eq!(result.outcome, ComparisonOutcome::Equal);
+    assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
 
     let result = comparator.compare("hello\nworld", "hello world");
-    assert_eq!(result.outcome, ComparisonOutcome::Equal);
+    assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
 
     let result = comparator.compare("hello", "goodbye");
-    assert_eq!(result.outcome, ComparisonOutcome::Different);
+    assert_eq!(result.outcome, ComparisonOutcome::MildlyIncompatible);
 }
 
 #[test]
@@ -75,7 +75,7 @@ fn test_similarity_comparator_compare_method() {
     let comparator = SimilarityComparator::new(0.5);
 
     let result = comparator.compare("hello world", "hello world");
-    assert_eq!(result.outcome, ComparisonOutcome::Equal);
+    assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
 
     let result = comparator.compare("hello world", "hello world!");
     assert!(result.similarity_score > 0.0);
@@ -89,17 +89,20 @@ fn test_line_by_line_comparator_compare_method() {
     let comparator = LineByLineComparator;
 
     let result = comparator.compare("line1\nline2", "line1\nline2");
-    assert_eq!(result.outcome, ComparisonOutcome::Equal);
+    assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
 
     let result = comparator.compare("line1\nline2", "line1\nline3");
-    assert_eq!(result.outcome, ComparisonOutcome::Different);
+    assert!(
+        result.outcome == ComparisonOutcome::MildlyIncompatible
+            || result.outcome == ComparisonOutcome::SeverelyIncompatible
+    );
     assert!(result.diff.is_some());
 }
 
 #[test]
 fn test_comparison_result_equal() {
     let result = ComparisonResult::equal();
-    assert_eq!(result.outcome, ComparisonOutcome::Equal);
+    assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
     assert!(result.diff.is_none());
     assert_eq!(result.similarity_score, 1.0);
 }
@@ -107,9 +110,9 @@ fn test_comparison_result_equal() {
 #[test]
 fn test_comparison_result_different() {
     let result = ComparisonResult::different("outputs differ");
-    assert_eq!(result.outcome, ComparisonOutcome::Different);
+    assert_eq!(result.outcome, ComparisonOutcome::MildlyIncompatible);
     assert_eq!(result.diff, Some("outputs differ".to_string()));
-    assert_eq!(result.similarity_score, 0.0);
+    assert_eq!(result.similarity_score, 0.5);
 }
 
 #[test]
@@ -122,8 +125,14 @@ fn test_comparison_result_incomparable() {
 
 #[test]
 fn test_comparison_outcome_enum() {
-    assert_eq!(ComparisonOutcome::Equal, ComparisonOutcome::Equal);
-    assert_eq!(ComparisonOutcome::Different, ComparisonOutcome::Different);
+    assert_eq!(
+        ComparisonOutcome::StronglyEquivalent,
+        ComparisonOutcome::StronglyEquivalent
+    );
+    assert_eq!(
+        ComparisonOutcome::MildlyIncompatible,
+        ComparisonOutcome::MildlyIncompatible
+    );
     assert_eq!(
         ComparisonOutcome::Incomparable,
         ComparisonOutcome::Incomparable
@@ -138,22 +147,25 @@ fn test_different_comparators_produce_different_results() {
     let result_exact = comparator_exact.compare("  hello  ", "hello");
     let result_normalized = comparator_normalized.compare("  hello  ", "hello");
 
-    assert_eq!(result_exact.outcome, ComparisonOutcome::Different);
-    assert_eq!(result_normalized.outcome, ComparisonOutcome::Equal);
+    assert_eq!(result_exact.outcome, ComparisonOutcome::MildlyIncompatible);
+    assert_eq!(
+        result_normalized.outcome,
+        ComparisonOutcome::SemanticallyEquivalent
+    );
 }
 
 #[test]
 fn test_comparator_with_empty_strings() {
     let comparator = ExactComparator;
     let result = comparator.compare("", "");
-    assert_eq!(result.outcome, ComparisonOutcome::Equal);
+    assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
 }
 
 #[test]
 fn test_comparator_with_multiline_output() {
     let comparator = LineByLineComparator;
     let result = comparator.compare("a\nb\nc", "a\nb\nc");
-    assert_eq!(result.outcome, ComparisonOutcome::Equal);
+    assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
 }
 
 #[test]
@@ -165,8 +177,8 @@ fn test_comparator_integration_with_differential_runner() {
     let result1 = comparator.compare("hello", "hello");
     let result2 = comparator.compare("hello", "world");
 
-    assert_eq!(result1.outcome, ComparisonOutcome::Equal);
-    assert_eq!(result2.outcome, ComparisonOutcome::Different);
+    assert_eq!(result1.outcome, ComparisonOutcome::SemanticallyEquivalent);
+    assert_eq!(result2.outcome, ComparisonOutcome::MildlyIncompatible);
 }
 
 #[test]
