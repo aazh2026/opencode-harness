@@ -277,7 +277,82 @@ mod tests {
     }
 }
 
+#[cfg(test)]
 pub mod integration_tests {
+    use crate::client::ApiClient;
+
+    const TEST_BASE_URL: &str = "http://localhost:8080";
+
+    fn create_test_client() -> ApiClient {
+        ApiClient::new(TEST_BASE_URL)
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_007_list_projects_returns_list() {
+        let client = create_test_client();
+
+        let result = client.list_projects().await;
+
+        assert!(result.is_ok(), "Expected list_projects to succeed, got: {:?}", result);
+        let projects = result.unwrap();
+        assert!(
+            projects.iter().all(|p| !p.id.is_empty()),
+            "Expected all projects to have non-empty id"
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_007_list_projects_returns_correct_metadata() {
+        let client = create_test_client();
+
+        let result = client.list_projects().await;
+
+        assert!(result.is_ok(), "Expected list_projects to succeed, got: {:?}", result);
+        let projects = result.unwrap();
+
+        for project in &projects {
+            assert!(
+                !project.id.is_empty(),
+                "Expected project id to be non-empty"
+            );
+            assert!(
+                !project.name.is_empty(),
+                "Expected project name to be non-empty, got: {}",
+                project.name
+            );
+            assert!(
+                !project.path.is_empty(),
+                "Expected project path to be non-empty"
+            );
+            let now = chrono::Utc::now();
+            let diff = now.signed_duration_since(project.created_at);
+            assert!(
+                diff.num_seconds() >= 0 && diff.num_seconds() < 86400,
+                "created_at should be within 24 hours of now, got: {}",
+                project.created_at
+            );
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_007_list_projects_empty_returns_empty_array() {
+        let client = create_test_client();
+
+        let result = client.list_projects().await;
+
+        assert!(result.is_ok(), "Expected list_projects to succeed, got: {:?}", result);
+        let projects = result.unwrap();
+        assert!(
+            projects.is_empty() || projects.iter().any(|p| {
+                p.id.is_empty() && p.name.is_empty() && p.path.is_empty()
+            }),
+            "Expected empty array or projects with empty fields when no projects exist"
+        );
+    }
+
     #[test]
     fn test_module_exists() {
         assert!(true);

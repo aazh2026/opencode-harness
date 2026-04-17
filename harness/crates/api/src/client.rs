@@ -188,6 +188,35 @@ impl ApiClient {
             Err(ApiClientError::UnexpectedStatus(status))
         }
     }
+
+    pub async fn list_projects(&self) -> Result<Vec<Project>, ApiClientError> {
+        let url = format!("{}/projects", self.base_url);
+        let mut request = self.client.get(&url);
+
+        if let Some(token) = &self.auth_token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request
+            .send()
+            .await
+            .map_err(ApiClientError::Request)?;
+
+        let status = response.status();
+        if status.is_success() {
+            #[derive(Deserialize)]
+            struct ProjectsResponse { projects: Vec<Project> }
+            let result: ProjectsResponse = response
+                .json()
+                .await
+                .map_err(ApiClientError::Response)?;
+            Ok(result.projects)
+        } else if status.as_u16() == 401 {
+            Err(ApiClientError::Unauthorized)
+        } else {
+            Err(ApiClientError::UnexpectedStatus(status))
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
