@@ -279,29 +279,27 @@ impl CIGate {
         let mut blockers = Vec::new();
         let mut warnings = Vec::new();
 
-        // Check pass rate threshold
-        if pass_rate < config.pass_rate_threshold {
-            let deficit = (config.pass_rate_threshold - pass_rate) * total_tasks as f64;
-            if config.level == GateLevel::Release || deficit >= 1.0 {
-                blockers.push(GateFailure::TooManyRegressions {
-                    regressed: (deficit.ceil() as u32).max(1),
-                    threshold: (config.pass_rate_threshold * total_tasks as f64) as u32,
-                });
-            } else {
-                warnings.push(GateWarning::new(format!(
-                    "Pass rate {:.1}% below threshold {:.1}%",
-                    pass_rate * 100.0,
-                    config.pass_rate_threshold * 100.0
-                )));
-            }
-        }
-
-        // Check for blocked tasks
+        // Check for blocked tasks first. If tasks are already blocked, prefer surfacing the
+        // concrete blocked reasons instead of double-counting them again as regressions.
+        let mut has_blocked_tasks = false;
         for task in &report.task_results {
             if let crate::types::parity_verdict::ParityVerdict::Blocked { reason } = &task.verdict {
+                has_blocked_tasks = true;
                 blockers.push(GateFailure::BlockedTask {
                     task_id: task.task_id.clone(),
                     reason: format!("{:?}", reason),
+                });
+            }
+        }
+
+        // Check pass rate threshold using integer math semantics to avoid float edge cases at
+        // exact boundaries like 90% and 80%.
+        if !has_blocked_tasks && total_tasks > 0 {
+            let required_passes = (config.pass_rate_threshold * total_tasks as f64).ceil() as u32;
+            if passed_tasks < required_passes {
+                blockers.push(GateFailure::TooManyRegressions {
+                    regressed: required_passes - passed_tasks,
+                    threshold: required_passes,
                 });
             }
         }
