@@ -1098,6 +1098,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "opencode-recovery"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "opencode-api",
+ "opencode-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
 name = "openssl"
 version = "0.10.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"

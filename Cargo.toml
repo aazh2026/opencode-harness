@@ -4,6 +4,7 @@ members = [
     "harness/crates/core",
     "harness/crates/cli",
     "harness/crates/api",
+    "harness/crates/recovery",
     "harness/runners",
     "harness/comparators",
     "harness/verifiers",

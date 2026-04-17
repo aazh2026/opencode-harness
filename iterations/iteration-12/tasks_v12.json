@@ -441,7 +441,7 @@
       "priority": "P1",
       "title": "Tool list via API",
       "description": "API endpoint to list all registered tools",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify GET /tools returns list of registered tools",
         "AddIntegrationTest: verify GET /tools returns tools with correct metadata (name, description, schema)",
@@ -675,7 +675,7 @@
       "priority": "P1",
       "title": "Session reconnect",
       "description": "Session can be reconnected after temporary connection loss",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify session reconnects successfully after connection interruption",
         "AddIntegrationTest: verify session state is preserved during reconnection",
