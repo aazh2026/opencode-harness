@@ -245,3 +245,47 @@ fn test_types_compile_and_exports_are_correct() {
     }
     _check_all_types_accessible();
 }
+
+#[test]
+fn test_new_types_from_iteration_7_are_exported() {
+    use chrono::Utc;
+    use opencode_core::types::*;
+
+    let _ = BaselineMetadata::new()
+        .with_source_impl_version("1.0.0".to_string())
+        .with_target_impl_version("2.0.0".to_string())
+        .with_task_version("1.0.0".to_string())
+        .with_fixture_version("1.0.0".to_string())
+        .with_normalizer_version("1.0.0".to_string());
+
+    let _ = BaselineRecord::default();
+
+    let _ = ExecutionLevel::AlwaysOn;
+    let _ = ExecutionLevel::NightlyOnly;
+    let _ = ExecutionLevel::ReleaseOnly;
+
+    let _ = RegressionStatus::Candidate;
+    let _ = RegressionStatus::Approved;
+    let _ = RegressionStatus::Active;
+    let _ = RegressionStatus::Suppressed;
+    let _ = RegressionStatus::Resolved;
+
+    let _ = RegressionCase::default();
+
+    let _ = WhitelistScope::Task("TASK-001".to_string());
+    let _ = WhitelistScope::Category("timing".to_string());
+    let _ = WhitelistScope::Global;
+
+    let future = Utc::now() + chrono::Duration::days(30);
+    let _ = WhitelistEntry::new(
+        "WL-001".to_string(),
+        WhitelistScope::Global,
+        "Test reason".to_string(),
+        "test-owner".to_string(),
+        Some(future),
+        None,
+        AllowedVariance::new(vec![0], None, vec![]),
+        Utc::now(),
+        Utc::now(),
+    );
+}
