@@ -1,0 +1,69 @@
+id: baseline-001
+task_id: TASK-001
+metadata:
+  source_impl_version: 1.0.0
+  target_impl_version: 2.0.0
+  task_version: 1.2.0
+  fixture_version: 1.1.0
+  normalizer_version: 1.0.5
+  approved_by: null
+  approved_at: null
+  notes: null
+legacy_output:
+  exit_code: 0
+  stdout: legacy output
+  stderr: ''
+  stdout_path: /tmp/stdout.txt
+  stderr_path: /tmp/stderr.txt
+  duration_ms: 0
+  artifacts: []
+  artifact_paths: []
+  session_metadata:
+    session_id: 894d732a-c488-4d4f-843a-3698128628f0
+    runner_name: default
+    task_id: default
+    started_at: 2026-04-17T11:12:56.774883Z
+    finished_at: 2026-04-17T11:12:56.774883Z
+    working_directory: /tmp
+  event_log_path: /tmp/event.log
+  side_effect_snapshot_path: null
+  failure_kind: null
+  capability_summary:
+    binary_available: false
+    workspace_prepared: false
+    environment_supported: false
+    timeout_enforced: false
+    artifacts_collected: 0
+    side_effects_detected: []
+rust_output:
+  exit_code: 0
+  stdout: rust output
+  stderr: ''
+  stdout_path: /tmp/stdout.txt
+  stderr_path: /tmp/stderr.txt
+  duration_ms: 0
+  artifacts: []
+  artifact_paths: []
+  session_metadata:
+    session_id: 9ea565da-0916-413d-a52f-d8ff7c0ef575
+    runner_name: default
+    task_id: default
+    started_at: 2026-04-17T11:12:56.774887Z
+    finished_at: 2026-04-17T11:12:56.774887Z
+    working_directory: /tmp
+  event_log_path: /tmp/event.log
+  side_effect_snapshot_path: null
+  failure_kind: null
+  capability_summary:
+    binary_available: false
+    workspace_prepared: false
+    environment_supported: false
+    timeout_enforced: false
+    artifacts_collected: 0
+    side_effects_detected: []
+normalized_legacy: normalized legacy
+normalized_rust: normalized rust
+verdict: Pass
+created_at: 2026-04-17T11:12:56.774222Z
+raw_legacy_path: /artifacts/legacy
+raw_rust_path: /artifacts/rust
