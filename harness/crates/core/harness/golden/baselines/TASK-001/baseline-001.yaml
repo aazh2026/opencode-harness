@@ -19,11 +19,11 @@ legacy_output:
   artifacts: []
   artifact_paths: []
   session_metadata:
-    session_id: ff8de4d0-dcdd-4e37-bd41-bc1db6af03f7
+    session_id: abdd7b44-7347-4dbe-bb92-b99a33023887
     runner_name: default
     task_id: default
-    started_at: 2026-04-17T16:52:20.419363Z
-    finished_at: 2026-04-17T16:52:20.419363Z
+    started_at: 2026-04-17T16:56:01.912050Z
+    finished_at: 2026-04-17T16:56:01.912051Z
     working_directory: /tmp
   event_log_path: /tmp/event.log
   side_effect_snapshot_path: null
@@ -45,11 +45,11 @@ rust_output:
   artifacts: []
   artifact_paths: []
   session_metadata:
-    session_id: dcf87556-70f5-4272-a7d2-e7cfb1a15a2a
+    session_id: 4bd33c84-f230-44dc-8374-ecd2b7f29355
     runner_name: default
     task_id: default
-    started_at: 2026-04-17T16:52:20.419365Z
-    finished_at: 2026-04-17T16:52:20.419365Z
+    started_at: 2026-04-17T16:56:01.912052Z
+    finished_at: 2026-04-17T16:56:01.912053Z
     working_directory: /tmp
   event_log_path: /tmp/event.log
   side_effect_snapshot_path: null
@@ -64,6 +64,6 @@ rust_output:
 normalized_legacy: normalized legacy
 normalized_rust: normalized rust
 verdict: Pass
-created_at: 2026-04-17T16:52:20.419224Z
+created_at: 2026-04-17T16:56:01.911933Z
 raw_legacy_path: /artifacts/legacy
 raw_rust_path: /artifacts/rust
