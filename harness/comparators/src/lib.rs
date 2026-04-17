@@ -2,8 +2,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonOutcome {
-    Equal,
-    Different,
+    StronglyEquivalent,
+    SemanticallyEquivalent,
+    AllowedVariance,
+    MildlyIncompatible,
+    SeverelyIncompatible,
     Incomparable,
 }
 
@@ -17,17 +20,57 @@ pub struct ComparisonResult {
 impl ComparisonResult {
     pub fn equal() -> Self {
         Self {
-            outcome: ComparisonOutcome::Equal,
+            outcome: ComparisonOutcome::StronglyEquivalent,
             diff: None,
             similarity_score: 1.0,
         }
     }
 
-    pub fn different(diff: impl Into<String>) -> Self {
+    pub fn strongly_equivalent() -> Self {
         Self {
-            outcome: ComparisonOutcome::Different,
+            outcome: ComparisonOutcome::StronglyEquivalent,
+            diff: None,
+            similarity_score: 1.0,
+        }
+    }
+
+    pub fn semantically_equivalent() -> Self {
+        Self {
+            outcome: ComparisonOutcome::SemanticallyEquivalent,
+            diff: None,
+            similarity_score: 1.0,
+        }
+    }
+
+    pub fn allowed_variance(details: impl Into<String>) -> Self {
+        Self {
+            outcome: ComparisonOutcome::AllowedVariance,
+            diff: Some(details.into()),
+            similarity_score: 0.85,
+        }
+    }
+
+    pub fn mildly_incompatible(diff: impl Into<String>) -> Self {
+        Self {
+            outcome: ComparisonOutcome::MildlyIncompatible,
+            diff: Some(diff.into()),
+            similarity_score: 0.5,
+        }
+    }
+
+    pub fn severely_incompatible(diff: impl Into<String>) -> Self {
+        Self {
+            outcome: ComparisonOutcome::SeverelyIncompatible,
             diff: Some(diff.into()),
             similarity_score: 0.0,
+        }
+    }
+
+    pub fn different(diff: impl Into<String>) -> Self {
+        Self {
+            outcome: ComparisonOutcome::MildlyIncompatible,
+            diff: Some(diff.into()),
+            similarity_score: 0.5,
         }
     }
 
@@ -41,7 +84,11 @@ impl ComparisonResult {
 
     pub fn different_with_score(diff: impl Into<String>, score: f64) -> Self {
         Self {
-            outcome: ComparisonOutcome::Different,
+            outcome: if score >= 0.7 {
+                ComparisonOutcome::MildlyIncompatible
+            } else {
+                ComparisonOutcome::SeverelyIncompatible
+            },
             diff: Some(diff.into()),
             similarity_score: score,
         }
@@ -59,7 +106,7 @@ pub struct ExactComparator;
 impl Comparator for ExactComparator {
     fn compare(&self, output1: &str, output2: &str) -> ComparisonResult {
         if output1 == output2 {
-            ComparisonResult::equal()
+            ComparisonResult::strongly_equivalent()
         } else {
             ComparisonResult::different(format!(
                 "Exact comparison failed: length1={}, length2={}",
@@ -117,7 +164,7 @@ impl Comparator for NormalizedComparator {
         let norm2 = self.normalize(output2);
 
         if norm1 == norm2 {
-            ComparisonResult::equal()
+            ComparisonResult::semantically_equivalent()
         } else {
             ComparisonResult::different(format!(
                 "Normalized comparison failed:\n  Expected: '{}'\n  Actual: '{}'",
@@ -176,7 +223,7 @@ impl Comparator for SimilarityComparator {
         let similarity = self.calculate_similarity(output1, output2);
 
         if similarity >= self.threshold {
-            ComparisonResult::equal()
+            ComparisonResult::semantically_equivalent()
         } else {
             ComparisonResult::different_with_score(
                 format!(
@@ -225,7 +272,7 @@ impl Comparator for LineByLineComparator {
             .collect();
 
         if lines1 == lines2 {
-            return ComparisonResult::equal();
+            return ComparisonResult::strongly_equivalent();
         }
 
         let mut diff_lines = Vec::new();
@@ -282,19 +329,126 @@ mod tests {
     }
 
     #[test]
-    fn test_comparison_result_equal() {
+    fn test_strongly_equivalent_variant_exists() {
+        let outcome = ComparisonOutcome::StronglyEquivalent;
+        assert_eq!(outcome, ComparisonOutcome::StronglyEquivalent);
+    }
+
+    #[test]
+    fn test_comparison_result_equal_returns_strongly_equivalent() {
         let result = ComparisonResult::equal();
-        assert_eq!(result.outcome, ComparisonOutcome::Equal);
+        assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
         assert!(result.diff.is_none());
         assert_eq!(result.similarity_score, 1.0);
     }
 
     #[test]
-    fn test_comparison_result_different() {
-        let result = ComparisonResult::different("output differs");
-        assert_eq!(result.outcome, ComparisonOutcome::Different);
-        assert_eq!(result.diff, Some("output differs".to_string()));
+    fn test_comparison_result_strongly_equivalent() {
+        let result = ComparisonResult::strongly_equivalent();
+        assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
+        assert!(result.diff.is_none());
+        assert_eq!(result.similarity_score, 1.0);
+    }
+
+    #[test]
+    fn test_semantically_equivalent_variant_exists() {
+        let outcome = ComparisonOutcome::SemanticallyEquivalent;
+        assert_eq!(outcome, ComparisonOutcome::SemanticallyEquivalent);
+    }
+
+    #[test]
+    fn test_comparison_result_semantically_equivalent() {
+        let result = ComparisonResult::semantically_equivalent();
+        assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
+        assert!(result.diff.is_none());
+        assert_eq!(result.similarity_score, 1.0);
+    }
+
+    #[test]
+    fn test_normalized_comparator_returns_semantically_equivalent() {
+        let comparator = NormalizedComparator;
+        let result = comparator.compare("  hello   world  ", "hello world");
+        assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
+    }
+
+    #[test]
+    fn test_similarity_comparator_returns_semantically_equivalent() {
+        let comparator = SimilarityComparator::new(0.5);
+        let result = comparator.compare("hello world", "hello world");
+        assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
+    }
+
+    #[test]
+    fn test_allowed_variance_variant_exists() {
+        let outcome = ComparisonOutcome::AllowedVariance;
+        assert_eq!(outcome, ComparisonOutcome::AllowedVariance);
+    }
+
+    #[test]
+    fn test_comparison_result_allowed_variance_with_timing() {
+        let result = ComparisonResult::allowed_variance("Timing diff 50ms within tolerance");
+        assert_eq!(result.outcome, ComparisonOutcome::AllowedVariance);
+        assert_eq!(
+            result.diff,
+            Some("Timing diff 50ms within tolerance".to_string())
+        );
+        assert_eq!(result.similarity_score, 0.85);
+    }
+
+    #[test]
+    fn test_comparison_result_allowed_variance_with_exit_code() {
+        let result = ComparisonResult::allowed_variance("Exit code 0 and 1 both allowed");
+        assert_eq!(result.outcome, ComparisonOutcome::AllowedVariance);
+        assert_eq!(
+            result.diff,
+            Some("Exit code 0 and 1 both allowed".to_string())
+        );
+    }
+
+    #[test]
+    fn test_comparison_result_allowed_variance_with_output_pattern() {
+        let result = ComparisonResult::allowed_variance("Output matches allowed pattern");
+        assert_eq!(result.outcome, ComparisonOutcome::AllowedVariance);
+        assert_eq!(
+            result.diff,
+            Some("Output matches allowed pattern".to_string())
+        );
+    }
+
+    #[test]
+    fn test_mildly_incompatible_variant_exists() {
+        let outcome = ComparisonOutcome::MildlyIncompatible;
+        assert_eq!(outcome, ComparisonOutcome::MildlyIncompatible);
+    }
+
+    #[test]
+    fn test_comparison_result_mildly_incompatible() {
+        let result = ComparisonResult::mildly_incompatible("Minor formatting difference");
+        assert_eq!(result.outcome, ComparisonOutcome::MildlyIncompatible);
+        assert_eq!(result.diff, Some("Minor formatting difference".to_string()));
+        assert_eq!(result.similarity_score, 0.5);
+    }
+
+    #[test]
+    fn test_severely_incompatible_variant_exists() {
+        let outcome = ComparisonOutcome::SeverelyIncompatible;
+        assert_eq!(outcome, ComparisonOutcome::SeverelyIncompatible);
+    }
+
+    #[test]
+    fn test_comparison_result_severely_incompatible() {
+        let result = ComparisonResult::severely_incompatible("Complete output mismatch");
+        assert_eq!(result.outcome, ComparisonOutcome::SeverelyIncompatible);
+        assert_eq!(result.diff, Some("Complete output mismatch".to_string()));
         assert_eq!(result.similarity_score, 0.0);
+    }
+
+    #[test]
+    fn test_comparison_result_different_returns_mildly_incompatible() {
+        let result = ComparisonResult::different("output differs");
+        assert_eq!(result.outcome, ComparisonOutcome::MildlyIncompatible);
+        assert_eq!(result.diff, Some("output differs".to_string()));
+        assert_eq!(result.similarity_score, 0.5);
     }
 
     #[test]
@@ -303,6 +457,42 @@ mod tests {
         assert_eq!(result.outcome, ComparisonOutcome::Incomparable);
         assert_eq!(result.diff, Some("cannot compare binary data".to_string()));
         assert_eq!(result.similarity_score, 0.0);
+    }
+
+    #[test]
+    fn test_helper_methods_return_correct_variants() {
+        assert_eq!(
+            ComparisonResult::strongly_equivalent().outcome,
+            ComparisonOutcome::StronglyEquivalent
+        );
+        assert_eq!(
+            ComparisonResult::semantically_equivalent().outcome,
+            ComparisonOutcome::SemanticallyEquivalent
+        );
+        assert_eq!(
+            ComparisonResult::allowed_variance("test").outcome,
+            ComparisonOutcome::AllowedVariance
+        );
+        assert_eq!(
+            ComparisonResult::mildly_incompatible("test").outcome,
+            ComparisonOutcome::MildlyIncompatible
+        );
+        assert_eq!(
+            ComparisonResult::severely_incompatible("test").outcome,
+            ComparisonOutcome::SeverelyIncompatible
+        );
+    }
+
+    #[test]
+    fn test_different_with_score_mildly_incompatible_when_high_score() {
+        let result = ComparisonResult::different_with_score("test diff", 0.75);
+        assert_eq!(result.outcome, ComparisonOutcome::MildlyIncompatible);
+    }
+
+    #[test]
+    fn test_different_with_score_severely_incompatible_when_low_score() {
+        let result = ComparisonResult::different_with_score("test diff", 0.3);
+        assert_eq!(result.outcome, ComparisonOutcome::SeverelyIncompatible);
     }
 
     #[test]
@@ -323,10 +513,10 @@ mod tests {
     fn test_comparator_accepts_two_string_outputs() {
         let comparator = TestComparator;
         let result = comparator.compare("hello", "hello");
-        assert_eq!(result.outcome, ComparisonOutcome::Equal);
+        assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
 
         let result = comparator.compare("hello", "world");
-        assert_eq!(result.outcome, ComparisonOutcome::Different);
+        assert_eq!(result.outcome, ComparisonOutcome::MildlyIncompatible);
     }
 
     #[test]
@@ -336,17 +526,17 @@ mod tests {
     }
 
     #[test]
-    fn test_exact_comparator_equal() {
+    fn test_exact_comparator_returns_strongly_equivalent() {
         let comparator = ExactComparator;
         let result = comparator.compare("hello world", "hello world");
-        assert_eq!(result.outcome, ComparisonOutcome::Equal);
+        assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
     }
 
     #[test]
-    fn test_exact_comparator_different() {
+    fn test_exact_comparator_returns_mildly_incompatible() {
         let comparator = ExactComparator;
         let result = comparator.compare("hello", "world");
-        assert_eq!(result.outcome, ComparisonOutcome::Different);
+        assert_eq!(result.outcome, ComparisonOutcome::MildlyIncompatible);
         assert!(result.diff.is_some());
     }
 
@@ -354,56 +544,59 @@ mod tests {
     fn test_normalized_comparator_equal() {
         let comparator = NormalizedComparator;
         let result = comparator.compare("  hello   world  ", "hello world");
-        assert_eq!(result.outcome, ComparisonOutcome::Equal);
+        assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
     }
 
     #[test]
     fn test_normalized_comparator_different() {
         let comparator = NormalizedComparator;
         let result = comparator.compare("hello world", "hello world!");
-        assert_eq!(result.outcome, ComparisonOutcome::Different);
+        assert_eq!(result.outcome, ComparisonOutcome::MildlyIncompatible);
     }
 
     #[test]
     fn test_normalized_comparator_multiline() {
         let comparator = NormalizedComparator;
         let result = comparator.compare("  line1  \n  line2  ", "line1 line2");
-        assert_eq!(result.outcome, ComparisonOutcome::Equal);
+        assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
     }
 
     #[test]
     fn test_similarity_comparator_identical() {
         let comparator = SimilarityComparator::new(0.5);
         let result = comparator.compare("hello world", "hello world");
-        assert_eq!(result.outcome, ComparisonOutcome::Equal);
+        assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
     }
 
     #[test]
     fn test_similarity_comparator_similar() {
         let comparator = SimilarityComparator::new(0.3);
         let result = comparator.compare("hello world", "hello world!");
-        assert_eq!(result.outcome, ComparisonOutcome::Equal);
+        assert_eq!(result.outcome, ComparisonOutcome::SemanticallyEquivalent);
     }
 
     #[test]
     fn test_similarity_comparator_different() {
         let comparator = SimilarityComparator::new(0.9);
         let result = comparator.compare("hello world", "goodbye world");
-        assert_eq!(result.outcome, ComparisonOutcome::Different);
+        assert_eq!(result.outcome, ComparisonOutcome::SeverelyIncompatible);
     }
 
     #[test]
     fn test_line_by_line_comparator_equal() {
         let comparator = LineByLineComparator;
         let result = comparator.compare("line1\nline2", "line1\nline2");
-        assert_eq!(result.outcome, ComparisonOutcome::Equal);
+        assert_eq!(result.outcome, ComparisonOutcome::StronglyEquivalent);
     }
 
     #[test]
     fn test_line_by_line_comparator_different() {
         let comparator = LineByLineComparator;
         let result = comparator.compare("line1\nline2", "line1\nline3");
-        assert_eq!(result.outcome, ComparisonOutcome::Different);
+        assert!(
+            result.outcome == ComparisonOutcome::MildlyIncompatible
+                || result.outcome == ComparisonOutcome::SeverelyIncompatible
+        );
     }
 
     #[test]
