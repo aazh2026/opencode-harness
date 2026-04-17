@@ -1,4 +1,6 @@
-use crate::types::parity_verdict::ParityVerdict;
+use crate::types::failure_classification::FailureClassification;
+use crate::types::parity_verdict::{DiffCategory, ParityVerdict};
+use crate::types::severity::Severity;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -69,6 +71,11 @@ pub struct ReportSummary {
     pub timing_ms: TimingStatsSummary,
     /// Pass rate as a floating point number between 0.0 and 1.0.
     pub pass_rate: f64,
+    pub failure_type_breakdown: BTreeMap<FailureClassification, u32>,
+    pub manual_check_count: u32,
+    pub environment_limited_count: u32,
+    pub artifact_links: Vec<String>,
+    pub whitelist_applied: Vec<WhitelistEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,6 +84,21 @@ pub struct TimingStatsSummary {
     pub total_ms: u64,
     /// Number of tasks with timing data.
     pub count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SuiteInfo {
+    pub name: String,
+    pub description: String,
+    pub gate_level: String,
+    pub included_categories: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WhitelistEntry {
+    pub task_id: String,
+    pub reason: String,
+    pub expires_at: Option<DateTime<Utc>>,
 }
 
 /// Parity report containing results from a differential run.
@@ -92,6 +114,9 @@ pub struct ParityReport {
     pub task_results: Vec<TaskResult>,
     /// Computed summary statistics.
     pub summary: ReportSummary,
+    pub mismatch_counts: BTreeMap<DiffCategory, u32>,
+    pub severity_aggregation: BTreeMap<Severity, u32>,
+    pub suite_info: SuiteInfo,
 }
 
 impl ParityReport {
@@ -110,6 +135,19 @@ impl ParityReport {
                     count: 0,
                 },
                 pass_rate: 0.0,
+                failure_type_breakdown: BTreeMap::new(),
+                manual_check_count: 0,
+                environment_limited_count: 0,
+                artifact_links: Vec::new(),
+                whitelist_applied: Vec::new(),
+            },
+            mismatch_counts: BTreeMap::new(),
+            severity_aggregation: BTreeMap::new(),
+            suite_info: SuiteInfo {
+                name: String::new(),
+                description: String::new(),
+                gate_level: String::new(),
+                included_categories: Vec::new(),
             },
         }
     }
@@ -125,6 +163,12 @@ impl ParityReport {
         let mut verdict_counts = BTreeMap::new();
         let mut total_duration = 0u64;
         let mut pass_count = 0u32;
+        let mut mismatch_counts = BTreeMap::new();
+        let mut failure_type_breakdown = BTreeMap::new();
+        let mut manual_check_count = 0u32;
+        let mut environment_limited_count = 0u32;
+        let mut artifact_links = Vec::new();
+        let severity_aggregation = BTreeMap::new();
 
         for task in &self.task_results {
             let verdict_key = task.verdict.summary();
@@ -134,6 +178,59 @@ impl ParityReport {
             if task.is_pass() {
                 pass_count += 1;
             }
+
+            match &task.verdict {
+                ParityVerdict::Fail { category, .. } => {
+                    *mismatch_counts.entry(category.clone()).or_insert(0) += 1;
+                    *failure_type_breakdown
+                        .entry(FailureClassification::ImplementationFailure)
+                        .or_insert(0) += 1;
+                }
+                ParityVerdict::Warn { category, .. } => {
+                    *mismatch_counts.entry(category.clone()).or_insert(0) += 1;
+                }
+                ParityVerdict::ManualCheck { .. } => {
+                    manual_check_count += 1;
+                    *failure_type_breakdown
+                        .entry(FailureClassification::FlakySuspected)
+                        .or_insert(0) += 1;
+                }
+                ParityVerdict::Blocked { reason } => {
+                    use crate::types::parity_verdict::BlockedReason;
+                    match reason {
+                        BlockedReason::DependencyMissing { .. } => {
+                            *failure_type_breakdown
+                                .entry(FailureClassification::DependencyMissing)
+                                .or_insert(0) += 1;
+                        }
+                        BlockedReason::EnvironmentNotSupported { .. } => {
+                            *failure_type_breakdown
+                                .entry(FailureClassification::EnvironmentNotSupported)
+                                .or_insert(0) += 1;
+                            environment_limited_count += 1;
+                        }
+                        BlockedReason::BinaryNotFound { .. } | BlockedReason::PermissionDenied { .. } => {
+                            *failure_type_breakdown
+                                .entry(FailureClassification::InfraFailure)
+                                .or_insert(0) += 1;
+                        }
+                    }
+                }
+                ParityVerdict::Error { .. } => {
+                    *failure_type_breakdown
+                        .entry(FailureClassification::InfraFailure)
+                        .or_insert(0) += 1;
+                }
+                ParityVerdict::PassWithAllowedVariance { variance_type, .. } => {
+                    use crate::types::parity_verdict::VarianceType;
+                    if matches!(variance_type, VarianceType::EnvironmentLimited) {
+                        environment_limited_count += 1;
+                    }
+                }
+                ParityVerdict::Pass => {}
+            }
+
+            artifact_links.extend(task.artifacts.clone());
         }
 
         let pass_rate = if total > 0 {
@@ -150,7 +247,14 @@ impl ParityReport {
                 count: total,
             },
             pass_rate,
+            failure_type_breakdown,
+            manual_check_count,
+            environment_limited_count,
+            artifact_links,
+            whitelist_applied: Vec::new(),
         };
+        self.mismatch_counts = mismatch_counts;
+        self.severity_aggregation = severity_aggregation;
     }
 
     /// Returns the summary, computing it first if needed.
