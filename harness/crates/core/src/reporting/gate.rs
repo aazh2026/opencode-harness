@@ -1,3 +1,4 @@
+use crate::config::AppConfig;
 use crate::reporting::report::ParityReport;
 
 /// Gate levels for CI integration.
@@ -22,6 +23,15 @@ impl GateLevel {
         }
     }
 
+    /// Returns the pass rate threshold from config, falling back to default.
+    pub fn pass_rate_threshold_from_config(&self, config: &AppConfig) -> f64 {
+        match self {
+            GateLevel::PR => config.gate_thresholds.pr_pass_rate,
+            GateLevel::Nightly => config.gate_thresholds.nightly_pass_rate,
+            GateLevel::Release => config.gate_thresholds.release_pass_rate,
+        }
+    }
+
     /// Returns the default max blockers for this gate level.
     pub fn max_blockers(&self) -> u32 {
         0
@@ -34,6 +44,20 @@ impl GateLevel {
             GateLevel::Nightly => 10,
             GateLevel::Release => 0,
         }
+    }
+
+    /// Returns the max warnings from config, falling back to default.
+    pub fn max_warnings_from_config(&self, config: &AppConfig) -> u32 {
+        match self {
+            GateLevel::PR => config.gate_thresholds.pr_max_warnings,
+            GateLevel::Nightly => config.gate_thresholds.nightly_max_warnings,
+            GateLevel::Release => config.gate_thresholds.release_max_warnings,
+        }
+    }
+
+    /// Returns the error rate threshold from config.
+    pub fn error_rate_threshold(config: &AppConfig) -> f64 {
+        config.gate_thresholds.error_rate_threshold
     }
 
     /// Returns a human-readable name for this gate level.
@@ -163,6 +187,8 @@ pub struct GateConfig {
     pub max_warnings: u32,
     /// Maximum task duration in milliseconds before timeout.
     pub max_timeout_ms: Option<u64>,
+    /// Error rate threshold (0.0 to 1.0).
+    pub error_rate_threshold: f64,
 }
 
 impl GateConfig {
@@ -174,6 +200,7 @@ impl GateConfig {
             max_blockers: level.max_blockers(),
             max_warnings: level.max_warnings(),
             max_timeout_ms: None,
+            error_rate_threshold: 0.1,
         }
     }
 
@@ -214,6 +241,18 @@ impl GateConfig {
     pub fn with_max_timeout_ms(mut self, timeout_ms: u64) -> Self {
         self.max_timeout_ms = Some(timeout_ms);
         self
+    }
+
+    /// Creates a gate config from an AppConfig instance.
+    pub fn from_app_config(level: GateLevel, app_config: &AppConfig) -> Self {
+        Self {
+            level,
+            pass_rate_threshold: level.pass_rate_threshold_from_config(app_config),
+            max_blockers: level.max_blockers(),
+            max_warnings: level.max_warnings_from_config(app_config),
+            max_timeout_ms: None,
+            error_rate_threshold: GateLevel::error_rate_threshold(app_config),
+        }
     }
 }
 
@@ -307,12 +346,11 @@ impl CIGate {
         // Check for error rate
         if total_tasks > 0 {
             let error_rate = error_tasks as f64 / total_tasks as f64;
-            if error_rate > 0.1 {
-                // More than 10% errors
+            if error_rate > config.error_rate_threshold {
                 blockers.push(GateFailure::ErrorRateExceeded {
                     error_count: error_tasks,
                     total_tasks,
-                    threshold: 0.1,
+                    threshold: config.error_rate_threshold,
                 });
             }
         }

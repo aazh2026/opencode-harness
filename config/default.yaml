@@ -1,0 +1,13 @@
+gate_thresholds:
+  pr_pass_rate: 0.90
+  nightly_pass_rate: 0.80
+  release_pass_rate: 1.0
+  pr_max_warnings: 5
+  nightly_max_warnings: 10
+  release_max_warnings: 0
+  error_rate_threshold: 0.1
+
+timeout:
+  default_timeout_seconds: 300
+  suite_timeout_seconds: 60
+  max_timeout_seconds: 3600
