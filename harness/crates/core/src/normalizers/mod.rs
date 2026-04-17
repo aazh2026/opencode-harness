@@ -2,6 +2,7 @@ pub mod line_endings;
 pub mod normalizer;
 pub mod paths;
 pub mod variance;
+pub mod whitelist_validator;
 pub mod whitespace;
 
 pub use normalizer::{
