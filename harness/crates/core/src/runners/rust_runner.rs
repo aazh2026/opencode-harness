@@ -599,29 +599,6 @@ mod timeout {
 
     #[test]
     #[ignore]
-    fn test_env_overrides_applied_via_command_envs() {
-        let temp_dir = TempDir::new().unwrap();
-        let mut task = create_test_task();
-        task.input.command = "printenv".to_string();
-        task.input.args = vec!["TEST_ENV_VAR".to_string()];
-
-        let mut env_overrides = HashMap::new();
-        env_overrides.insert("TEST_ENV_VAR".to_string(), "test_value_123".to_string());
-
-        let input =
-            create_runner_input(task, temp_dir.path().to_path_buf(), env_overrides, 5, None);
-
-        let runner = RustRunner::new("test-env");
-        let result = runner.execute(&input);
-
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.capability_summary.binary_available);
-        let _ = output.capability_summary.workspace_prepared;
-    }
-
-    #[test]
-    #[ignore]
     fn test_artifact_persister_writes_stdout_stderr_to_disk() {
         let temp_dir = TempDir::new().unwrap();
         let mut task = create_test_task();
@@ -774,6 +751,202 @@ mod timeout {
         assert_eq!(
             deserialized.failure_kind, output.failure_kind,
             "failure_kind should survive serialization round-trip"
+        );
+    }
+}
+
+#[cfg(test)]
+mod env {
+    use super::*;
+    use crate::types::capture_options::CaptureOptions;
+    use crate::types::provider_mode::ProviderMode;
+    use tempfile::TempDir;
+
+    fn create_test_task() -> crate::types::task::Task {
+        crate::types::task::Task::new(
+            "TEST-ENV-001",
+            "Env Test Task",
+            crate::types::task::TaskCategory::Core,
+            "test-fixture",
+            "Test task description",
+            "Test expected outcome",
+            vec![],
+            crate::types::entry_mode::EntryMode::CLI,
+            crate::types::agent_mode::AgentMode::OneShot,
+            ProviderMode::Both,
+            crate::types::task_input::TaskInput::new("echo", vec!["test".to_string()], "/tmp"),
+            vec![],
+            crate::types::severity::Severity::Medium,
+            crate::types::execution_policy::ExecutionPolicy::ManualCheck,
+            60,
+            crate::types::on_missing_dependency::OnMissingDependency::Fail,
+        )
+    }
+
+    fn create_runner_input(
+        task: crate::types::task::Task,
+        workspace_path: PathBuf,
+        env_overrides: HashMap<String, String>,
+        timeout_seconds: u64,
+        binary_path: Option<PathBuf>,
+    ) -> RunnerInput {
+        RunnerInput::new(
+            task,
+            workspace_path,
+            env_overrides,
+            timeout_seconds,
+            binary_path,
+            ProviderMode::Both,
+            CaptureOptions::default(),
+        )
+    }
+
+    #[test]
+    fn test_env_overrides_applied_via_command_envs() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sh".to_string();
+        task.input.args = vec!["-c".to_string(), "echo $TEST_ENV_VAR".to_string()];
+
+        let mut env_overrides = HashMap::new();
+        env_overrides.insert("TEST_ENV_VAR".to_string(), "test_value_123".to_string());
+
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), env_overrides, 5, None);
+
+        let runner = RustRunner::new("test-env");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert!(
+            output.stdout.contains("test_value_123"),
+            "Expected env override value 'test_value_123' in stdout, got: {}",
+            output.stdout
+        );
+        assert!(
+            output.capability_summary.binary_available,
+            "binary_available should be true"
+        );
+    }
+
+    #[test]
+    fn test_env_overrides_with_multiple_variables() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sh".to_string();
+        task.input.args = vec!["-c".to_string(), "echo $VAR1 $VAR2 $VAR3".to_string()];
+
+        let mut env_overrides = HashMap::new();
+        env_overrides.insert("VAR1".to_string(), "value1".to_string());
+        env_overrides.insert("VAR2".to_string(), "value2".to_string());
+        env_overrides.insert("VAR3".to_string(), "value3".to_string());
+
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), env_overrides, 5, None);
+
+        let runner = RustRunner::new("test-multi-env");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert!(
+            output.stdout.contains("value1"),
+            "Expected 'value1' in stdout, got: {}",
+            output.stdout
+        );
+        assert!(
+            output.stdout.contains("value2"),
+            "Expected 'value2' in stdout, got: {}",
+            output.stdout
+        );
+        assert!(
+            output.stdout.contains("value3"),
+            "Expected 'value3' in stdout, got: {}",
+            output.stdout
+        );
+    }
+
+    #[test]
+    fn test_env_overrides_empty_map_does_not_affect_subprocess() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sh".to_string();
+        task.input.args = vec!["-c".to_string(), "echo HOME=$HOME".to_string()];
+
+        let env_overrides = HashMap::new();
+
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), env_overrides, 5, None);
+
+        let runner = RustRunner::new("test-empty-env");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert!(
+            output.stdout.contains("HOME="),
+            "Expected HOME to be present in output, got: {}",
+            output.stdout
+        );
+    }
+
+    #[test]
+    fn test_env_overrides_override_existing_env_vars() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sh".to_string();
+        task.input.args = vec![
+            "-c".to_string(),
+            "echo PATH_MODIFIED=$CUSTOM_VAR".to_string(),
+        ];
+
+        let mut env_overrides = HashMap::new();
+        env_overrides.insert(
+            "CUSTOM_VAR".to_string(),
+            "custom_value_override".to_string(),
+        );
+
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), env_overrides, 5, None);
+
+        let runner = RustRunner::new("test-override-env");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert!(
+            output.stdout.contains("custom_value_override"),
+            "Expected custom override value in stdout, got: {}",
+            output.stdout
+        );
+    }
+
+    #[test]
+    fn test_env_overrides_with_special_characters_in_value() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sh".to_string();
+        task.input.args = vec!["-c".to_string(), "echo SPECIAL=$SPECIAL_VAR".to_string()];
+
+        let mut env_overrides = HashMap::new();
+        env_overrides.insert(
+            "SPECIAL_VAR".to_string(),
+            "value with spaces and = signs".to_string(),
+        );
+
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), env_overrides, 5, None);
+
+        let runner = RustRunner::new("test-special-env");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert!(
+            output.stdout.contains("value with spaces and = signs"),
+            "Expected special value in stdout, got: {}",
+            output.stdout
         );
     }
 }
