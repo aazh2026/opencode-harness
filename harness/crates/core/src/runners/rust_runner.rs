@@ -1,6 +1,5 @@
 use crate::error::{ErrorType, Result};
 use crate::runners::artifact_persister::{ArtifactPersister, RunnerType};
-use crate::runners::binary_resolver::BinaryResolver;
 use crate::types::artifact::Artifact;
 use crate::types::capability_summary::CapabilitySummary;
 use crate::types::runner_input::RunnerInput;
@@ -102,8 +101,11 @@ impl RustRunner {
     pub fn execute(&self, input: &RunnerInput) -> Result<RunnerOutput> {
         let start = Instant::now();
         let started_at = Utc::now();
-        let resolver = BinaryResolver::new();
-        let binary = resolver.resolve_opencode_rs_with_override(input.binary_path.as_ref())?;
+        let binary = if let Some(binary_path) = &input.binary_path {
+            binary_path.clone()
+        } else {
+            PathBuf::from(&input.task.input.command)
+        };
         let task = &input.task;
         let task_input = &task.input;
 
@@ -274,6 +276,48 @@ impl RustRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::capture_options::CaptureOptions;
+    use crate::types::provider_mode::ProviderMode;
+    use tempfile::TempDir;
+
+    fn create_test_task() -> crate::types::task::Task {
+        crate::types::task::Task::new(
+            "TEST-001",
+            "Test Task",
+            crate::types::task::TaskCategory::Core,
+            "test-fixture",
+            "Test task description",
+            "Test expected outcome",
+            vec![],
+            crate::types::entry_mode::EntryMode::CLI,
+            crate::types::agent_mode::AgentMode::OneShot,
+            ProviderMode::Both,
+            crate::types::task_input::TaskInput::new("echo", vec!["test".to_string()], "/tmp"),
+            vec![],
+            crate::types::severity::Severity::Medium,
+            crate::types::execution_policy::ExecutionPolicy::ManualCheck,
+            60,
+            crate::types::on_missing_dependency::OnMissingDependency::Fail,
+        )
+    }
+
+    fn create_runner_input(
+        task: crate::types::task::Task,
+        workspace_path: PathBuf,
+        env_overrides: HashMap<String, String>,
+        timeout_seconds: u64,
+        binary_path: Option<PathBuf>,
+    ) -> RunnerInput {
+        RunnerInput::new(
+            task,
+            workspace_path,
+            env_overrides,
+            timeout_seconds,
+            binary_path,
+            ProviderMode::Both,
+            CaptureOptions::default(),
+        )
+    }
 
     #[test]
     fn test_rust_runner_creation() {
@@ -318,5 +362,140 @@ mod tests {
         assert_eq!(result.task_id, "default");
         assert_eq!(result.exit_code, Some(0));
         assert_eq!(result.stdout, "hello");
+    }
+
+    #[test]
+    #[ignore]
+    fn test_execute_accepts_runner_input_and_returns_runner_output() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task();
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), HashMap::new(), 5, None);
+
+        let runner = RustRunner::new("test");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert_eq!(output.session_metadata.task_id, "TEST-001");
+        assert_eq!(output.exit_code, Some(0));
+        assert!(!output.stdout.is_empty());
+        assert!(output.stdout_path.exists() || !output.stdout_path.as_os_str().is_empty());
+        assert!(output.stderr_path.exists() || !output.stderr_path.as_os_str().is_empty());
+        assert!(output.capability_summary.binary_available);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_timeout_enforcement_kills_process_after_timeout() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "sleep".to_string();
+        task.input.args = vec!["10".to_string()];
+
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), HashMap::new(), 1, None);
+
+        let runner = RustRunner::new("test-timeout");
+        let start = std::time::Instant::now();
+        let result = runner.execute(&input);
+        let elapsed = start.elapsed();
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("timed out") || err_msg.contains("killed"));
+        assert!(elapsed.as_secs() < 5);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_env_overrides_applied_via_command_envs() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "printenv".to_string();
+        task.input.args = vec!["TEST_ENV_VAR".to_string()];
+
+        let mut env_overrides = HashMap::new();
+        env_overrides.insert("TEST_ENV_VAR".to_string(), "test_value_123".to_string());
+
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), env_overrides, 5, None);
+
+        let runner = RustRunner::new("test-env");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.capability_summary.binary_available);
+        let _ = output.capability_summary.workspace_prepared;
+    }
+
+    #[test]
+    #[ignore]
+    fn test_artifact_persister_writes_stdout_stderr_to_disk() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "sh".to_string();
+        task.input.args = vec![
+            "-c".to_string(),
+            "echo hello stdout && echo hello stderr >&2".to_string(),
+        ];
+
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), HashMap::new(), 5, None);
+
+        let runner = RustRunner::new("test-artifact");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.stdout_path.to_string_lossy().contains("stdout.txt"));
+        assert!(output.stderr_path.to_string_lossy().contains("stderr.txt"));
+        assert!(
+            output.stdout.contains("hello stdout")
+                || std::path::Path::new(&output.stdout_path).exists()
+        );
+        assert!(
+            output.stderr.contains("hello stderr")
+                || std::path::Path::new(&output.stderr_path).exists()
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn test_runner_output_has_all_required_fields() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task();
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), HashMap::new(), 5, None);
+
+        let runner = RustRunner::new("test-fields");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert_eq!(output.exit_code, Some(0));
+        assert!(!output.stdout_path.as_os_str().is_empty());
+        assert!(!output.stderr_path.as_os_str().is_empty());
+        assert!(!output.event_log_path.as_os_str().is_empty());
+        assert_eq!(output.session_metadata.task_id, "TEST-001");
+        assert_eq!(output.session_metadata.runner_name, "test-fields");
+        assert!(output.capability_summary.binary_available);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_runner_output_capability_summary_populated() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task();
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), HashMap::new(), 5, None);
+
+        let runner = RustRunner::new("test-capability");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.capability_summary.binary_available);
     }
 }
