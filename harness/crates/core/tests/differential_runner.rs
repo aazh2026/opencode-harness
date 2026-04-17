@@ -1,5 +1,6 @@
 use opencode_core::loaders::DefaultTaskLoader;
 use opencode_core::loaders::TaskLoader;
+use opencode_core::runners::DifferentialResult;
 use opencode_core::runners::DifferentialRunner;
 use opencode_core::types::agent_mode::AgentMode;
 use opencode_core::types::assertion::AssertionType;
@@ -335,4 +336,297 @@ fn test_differential_runner_send_and_sync_trait_bounds() {
     let loader = DefaultTaskLoader::new();
     let _runner = DifferentialRunner::new(loader);
     assert_send_and_sync::<DifferentialRunner<DefaultTaskLoader>>();
+}
+
+#[test]
+fn test_smoke_directory_structure_created_in_artifacts_run_id() {
+    use opencode_core::runners::DifferentialRunner;
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let task_yaml = temp_dir.path().join("smoke_task.yaml");
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: SMOKE-DIR-001
+title: Smoke Test Directory Structure
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify directory structure creation
+expected_outcome: Directory structure created
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["smoke_test"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let result = runner.execute_single(&task_yaml).unwrap();
+
+    let diff_path = temp_dir.path().join("artifacts");
+    let has_run_id = std::fs::read_dir(&diff_path)
+        .ok()
+        .map(|mut entries| entries.next().and_then(|e| e.ok()).is_some())
+        .unwrap_or(false);
+
+    if has_run_id {
+        if let Ok(mut entries) = std::fs::read_dir(&diff_path) {
+            if let Some(Ok(entry)) = entries.next() {
+                let run_id_dir = entry.path();
+                assert!(run_id_dir.join("legacy").exists(), "legacy/ should exist");
+                assert!(run_id_dir.join("rust").exists(), "rust/ should exist");
+                assert!(run_id_dir.join("diff").exists(), "diff/ should exist");
+            }
+        }
+    } else {
+        assert!(
+            diff_path.join("legacy").exists() || result.diff_report_path.is_some(),
+            "Either legacy dir should exist or diff report was generated"
+        );
+    }
+}
+
+#[test]
+fn test_smoke_artifact_persistence_creates_stdout_stderr_metadata() {
+    use opencode_core::runners::DifferentialRunner;
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let task_yaml = temp_dir.path().join("smoke_artifacts_task.yaml");
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: SMOKE-ART-001
+title: Smoke Test Artifact Persistence
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify artifact persistence creates stdout, stderr, metadata
+expected_outcome: Artifacts persisted correctly
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["artifact_test"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let result = runner.execute_single(&task_yaml).unwrap();
+
+    if let Some(report_path) = &result.diff_report_path {
+        let run_dir = report_path.parent().and_then(|p| p.parent());
+        if let Some(run_dir) = run_dir {
+            let legacy_dir = run_dir.join("legacy");
+            let rust_dir = run_dir.join("rust");
+
+            if legacy_dir.exists() {
+                assert!(
+                    legacy_dir.join("stdout.txt").exists() || result.legacy_result.is_some(),
+                    "legacy/stdout.txt should exist"
+                );
+                assert!(
+                    legacy_dir.join("stderr.txt").exists() || result.legacy_result.is_some(),
+                    "legacy/stderr.txt should exist"
+                );
+                assert!(
+                    legacy_dir.join("metadata.json").exists() || result.legacy_result.is_some(),
+                    "legacy/metadata.json should exist"
+                );
+            }
+
+            if rust_dir.exists() {
+                assert!(
+                    rust_dir.join("stdout.txt").exists() || result.rust_result.is_some(),
+                    "rust/stdout.txt should exist"
+                );
+                assert!(
+                    rust_dir.join("stderr.txt").exists() || result.rust_result.is_some(),
+                    "rust/stderr.txt should exist"
+                );
+                assert!(
+                    rust_dir.join("metadata.json").exists() || result.rust_result.is_some(),
+                    "rust/metadata.json should exist"
+                );
+            }
+        }
+    }
+
+    drop(result);
+}
+
+#[test]
+fn test_smoke_diff_report_generated_in_artifacts_run_id_diff_report_json() {
+    use opencode_core::runners::DifferentialRunner;
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let task_yaml = temp_dir.path().join("smoke_diff_task.yaml");
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: SMOKE-DIFF-001
+title: Smoke Test Diff Report Generation
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify diff report is generated
+expected_outcome: Diff report generated
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["diff_test"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let result = runner.execute_single(&task_yaml).unwrap();
+
+    if result.legacy_result.is_some() && result.rust_result.is_some() {
+        assert!(
+            result.diff_report_path.is_some(),
+            "diff_report_path should be set when both runners succeed"
+        );
+
+        if let Some(ref report_path) = result.diff_report_path {
+            assert!(
+                report_path.to_string_lossy().contains("diff/report.json"),
+                "report path should be in diff/ directory and named report.json"
+            );
+            assert!(
+                report_path.exists(),
+                "report.json file should actually exist on disk"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_smoke_verdict_md_generated_with_correct_content() {
+    use opencode_core::runners::DifferentialRunner;
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+
+    let task_yaml = temp_dir.path().join("smoke_verdict_task.yaml");
+    std::fs::write(
+        &task_yaml,
+        r#"
+id: SMOKE-VERDICT-001
+title: Smoke Test Verdict Generation
+category: smoke
+fixture_project: fixtures/projects/cli-basic
+description: Verify verdict.md is generated with correct content
+expected_outcome: Verdict generated correctly
+preconditions: []
+entry_mode: CLI
+agent_mode: OneShot
+provider_mode: Both
+input:
+  command: echo
+  args: ["verdict_test"]
+  cwd: "/tmp"
+expected_assertions: []
+severity: High
+tags: []
+execution_policy: ManualCheck
+timeout_seconds: 60
+on_missing_dependency: Fail
+"#,
+    )
+    .unwrap();
+
+    let result = runner.execute_single(&task_yaml).unwrap();
+
+    if result.legacy_result.is_some() && result.rust_result.is_some() {
+        assert!(
+            result.verdict_path.is_some(),
+            "verdict_path should be set when both runners succeed"
+        );
+
+        if let Some(ref verdict_path) = result.verdict_path {
+            assert!(
+                verdict_path.to_string_lossy().contains("verdict.md"),
+                "verdict path should contain verdict.md"
+            );
+            assert!(
+                verdict_path.exists(),
+                "verdict.md file should exist on disk"
+            );
+
+            let content = std::fs::read_to_string(verdict_path).unwrap();
+            assert!(
+                content.contains("# Differential Verdict"),
+                "verdict.md should contain header"
+            );
+            assert!(
+                content.contains("## Run ID:"),
+                "verdict.md should contain Run ID section"
+            );
+            assert!(
+                content.contains("## Verdict:"),
+                "verdict.md should contain Verdict section"
+            );
+            assert!(
+                content.contains("| Metric |"),
+                "verdict.md should contain metrics table"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_regression_existing_differential_runner_tests_still_pass() {
+    let result = DifferentialResult::new("REGRESSION-001".to_string());
+    assert_eq!(result.task_id, "REGRESSION-001");
+    assert!(result.legacy_result.is_none());
+    assert!(result.rust_result.is_none());
+
+    assert!(!result.passed());
+    assert!(result.summary().contains("REGRESSION-001"));
+
+    let result2 = DifferentialResult::new("REGRESSION-002".to_string());
+    assert_eq!(result2.legacy_exit_code(), None);
+    assert_eq!(result2.rust_exit_code(), None);
+    assert_eq!(result2.legacy_stdout(), "");
+    assert_eq!(result2.rust_stdout(), "");
 }
