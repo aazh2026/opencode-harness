@@ -158,6 +158,16 @@ impl RustRunner {
 
         let (output, failure_kind) = match output_result {
             Ok(o) => (o, None),
+            Err(ErrorType::Timeout(msg)) => {
+                return self.build_error_output(
+                    started_at,
+                    Utc::now(),
+                    input,
+                    Some(1),
+                    format!("Command execution failed: {}", msg),
+                    Some(FailureClassification::FlakySuspected),
+                );
+            }
             Err(e) => {
                 let err_msg = e.to_string();
                 let failure = FailureClassification::InfraFailure;
@@ -354,7 +364,7 @@ impl RustRunner {
                         .arg(child_id.to_string())
                         .spawn();
                 }
-                Err(ErrorType::Runner(format!(
+                Err(ErrorType::Timeout(format!(
                     "Process timed out after {} seconds and was killed (pid: {})",
                     timeout_seconds, child_id
                 )))
@@ -479,11 +489,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn test_timeout_enforcement_kills_process_after_timeout() {
+    fn test_timeout_kills_process_after_timeout_seconds() {
         let temp_dir = TempDir::new().unwrap();
         let mut task = create_test_task();
-        task.input.command = "sleep".to_string();
+        task.input.command = "/bin/sleep".to_string();
         task.input.args = vec!["10".to_string()];
 
         let input =
@@ -494,10 +503,98 @@ mod tests {
         let result = runner.execute(&input);
         let elapsed = start.elapsed();
 
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("timed out") || err_msg.contains("killed"));
-        assert!(elapsed.as_secs() < 5);
+        assert!(
+            result.is_ok(),
+            "Expected Ok with FailureClassification on timeout, got: {:?}",
+            result
+        );
+        let output = result.unwrap();
+        assert_eq!(
+            output.failure_kind,
+            Some(FailureClassification::FlakySuspected),
+            "Expected FlakySuspected on timeout"
+        );
+        assert!(
+            output.stderr.contains("timed out") || output.stderr.contains("killed"),
+            "Error message should mention timeout or killed"
+        );
+        assert!(
+            elapsed.as_secs() < 5,
+            "Process should be killed within 5 seconds, took {}s",
+            elapsed.as_secs()
+        );
+    }
+
+    #[test]
+    fn test_failure_classification_is_flaky_on_timeout() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sleep".to_string();
+        task.input.args = vec!["20".to_string()];
+
+        let input =
+            create_runner_input(task, temp_dir.path().to_path_buf(), HashMap::new(), 2, None);
+
+        let runner = RustRunner::new("test-flaky-timeout");
+        let result = runner.execute(&input);
+
+        assert!(
+            result.is_ok(),
+            "Expected Ok with FailureClassification on timeout"
+        );
+        let output = result.unwrap();
+        assert_eq!(
+            output.failure_kind,
+            Some(FailureClassification::FlakySuspected),
+            "Timeout should be classified as FlakySuspected, got: {:?}",
+            output.failure_kind
+        );
+    }
+
+    #[test]
+    fn test_timeout_behavior_with_various_timeout_values() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sleep".to_string();
+        task.input.args = vec!["15".to_string()];
+
+        for timeout_val in [1u64, 5, 10] {
+            let input = create_runner_input(
+                task.clone(),
+                temp_dir.path().to_path_buf(),
+                HashMap::new(),
+                timeout_val,
+                None,
+            );
+
+            let runner = RustRunner::new(format!("test-timeout-{}", timeout_val));
+            let start = std::time::Instant::now();
+            let result = runner.execute(&input);
+            let elapsed = start.elapsed();
+
+            assert!(
+                result.is_ok(),
+                "Timeout {}: Expected Ok on timeout, got: {:?}",
+                timeout_val,
+                result
+            );
+            let output = result.unwrap();
+            assert_eq!(
+                output.failure_kind,
+                Some(FailureClassification::FlakySuspected),
+                "Timeout {}: Expected FlakySuspected",
+                timeout_val
+            );
+
+            let max_expected_time = timeout_val + 3;
+            assert!(
+                elapsed.as_secs() < max_expected_time,
+                "Timeout {}: Expected kill within {}s, took {}s",
+                timeout_val,
+                max_expected_time,
+                elapsed.as_secs()
+            );
+        }
     }
 
     #[test]
