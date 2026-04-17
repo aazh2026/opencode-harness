@@ -5,6 +5,8 @@ pub mod variance;
 pub mod whitespace;
 
 pub use normalizer::{
-    normalize_for_comparison, normalize_output, NormalizedOutput, Normalizer, WhitespaceNormalizer,
+    normalize_for_comparison, normalize_output, AppliedRule, LineEndingNormalizer, NoOpNormalizer,
+    NormalizedOutput, Normalizer, NormalizerAudit, PathNormalizer, Transformation,
+    WhitespaceNormalizer,
 };
 pub use variance::VarianceNormalizer;

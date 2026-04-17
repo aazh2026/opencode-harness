@@ -1,9 +1,48 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NormalizerAudit {
+    pub applied_rules: Vec<AppliedRule>,
+    pub input_hash: String,
+    pub output_hash: String,
+    pub transformations: Vec<Transformation>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppliedRule {
+    pub rule_name: String,
+    pub rule_version: String,
+    pub conditions_matched: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Transformation {
+    pub transformation_type: String,
+    pub description: String,
+    pub before_length: usize,
+    pub after_length: usize,
+}
+
 pub trait Normalizer: Send + Sync {
     fn normalize(&self, output: &str) -> String;
     fn name(&self) -> &str;
+    fn describe_rule(&self) -> String;
+    fn audit_normalize(&self, output: &str) -> (String, Transformation);
 }
 
 pub struct NoOpNormalizer;
+
+impl NoOpNormalizer {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for NoOpNormalizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Normalizer for NoOpNormalizer {
     fn normalize(&self, output: &str) -> String {
@@ -12,6 +51,24 @@ impl Normalizer for NoOpNormalizer {
 
     fn name(&self) -> &str {
         "noop"
+    }
+
+    fn describe_rule(&self) -> String {
+        "NoOp".to_string()
+    }
+
+    fn audit_normalize(&self, output: &str) -> (String, Transformation) {
+        let before_len = output.len();
+        let after_len = before_len;
+        (
+            output.to_string(),
+            Transformation {
+                transformation_type: "none".to_string(),
+                description: "No transformation applied".to_string(),
+                before_length: before_len,
+                after_length: after_len,
+            },
+        )
     }
 }
 
@@ -37,6 +94,25 @@ impl Normalizer for WhitespaceNormalizer {
     fn name(&self) -> &str {
         "whitespace"
     }
+
+    fn describe_rule(&self) -> String {
+        "Whitespace normalization rules: trim lines, collapse multiple spaces/tabs to single space, join lines with spaces".to_string()
+    }
+
+    fn audit_normalize(&self, output: &str) -> (String, Transformation) {
+        let before_len = output.len();
+        let normalized = self.normalize(output);
+        let after_len = normalized.len();
+        (
+            normalized,
+            Transformation {
+                transformation_type: "whitespace".to_string(),
+                description: "Trim lines, collapse whitespace, join with spaces".to_string(),
+                before_length: before_len,
+                after_length: after_len,
+            },
+        )
+    }
 }
 
 pub struct LineEndingNormalizer;
@@ -61,6 +137,25 @@ impl Normalizer for LineEndingNormalizer {
     fn name(&self) -> &str {
         "line_endings"
     }
+
+    fn describe_rule(&self) -> String {
+        "Line ending normalization rules: convert CRLF (\\r\\n) to LF (\\n), convert CR (\\r) to LF (\\n)".to_string()
+    }
+
+    fn audit_normalize(&self, output: &str) -> (String, Transformation) {
+        let before_len = output.len();
+        let normalized = self.normalize(output);
+        let after_len = normalized.len();
+        (
+            normalized,
+            Transformation {
+                transformation_type: "line_endings".to_string(),
+                description: "Normalize line endings to LF".to_string(),
+                before_length: before_len,
+                after_length: after_len,
+            },
+        )
+    }
 }
 
 pub struct PathNormalizer;
@@ -84,6 +179,25 @@ impl Normalizer for PathNormalizer {
 
     fn name(&self) -> &str {
         "path"
+    }
+
+    fn describe_rule(&self) -> String {
+        "Path normalization rules: convert backslashes to forward slashes on Windows".to_string()
+    }
+
+    fn audit_normalize(&self, output: &str) -> (String, Transformation) {
+        let before_len = output.len();
+        let normalized = self.normalize(output);
+        let after_len = normalized.len();
+        (
+            normalized,
+            Transformation {
+                transformation_type: "path".to_string(),
+                description: "Normalize path separators".to_string(),
+                before_length: before_len,
+                after_length: after_len,
+            },
+        )
     }
 }
 
@@ -169,6 +283,165 @@ mod tests {
         let normalizer = NoOpNormalizer;
         let input = "  hello world  \n";
         assert_eq!(normalizer.normalize(input), input);
+    }
+
+    #[test]
+    fn test_normalizer_audit_struct_fields() {
+        let audit = NormalizerAudit {
+            applied_rules: vec![AppliedRule {
+                rule_name: "whitespace".to_string(),
+                rule_version: "1.0.0".to_string(),
+                conditions_matched: vec!["trim".to_string(), "collapse".to_string()],
+            }],
+            input_hash: "abc123".to_string(),
+            output_hash: "def456".to_string(),
+            transformations: vec![Transformation {
+                transformation_type: "whitespace".to_string(),
+                description: "Trim and collapse whitespace".to_string(),
+                before_length: 20,
+                after_length: 15,
+            }],
+        };
+        assert_eq!(audit.applied_rules.len(), 1);
+        assert_eq!(audit.applied_rules[0].rule_name, "whitespace");
+        assert_eq!(audit.applied_rules[0].rule_version, "1.0.0");
+        assert_eq!(audit.applied_rules[0].conditions_matched.len(), 2);
+        assert_eq!(audit.transformations.len(), 1);
+        assert_eq!(audit.transformations[0].before_length, 20);
+        assert_eq!(audit.transformations[0].after_length, 15);
+    }
+
+    #[test]
+    fn test_applied_rule_struct_captures_fields() {
+        let rule = AppliedRule {
+            rule_name: "test_rule".to_string(),
+            rule_version: "2.1.0".to_string(),
+            conditions_matched: vec!["condition1".to_string(), "condition2".to_string()],
+        };
+        assert_eq!(rule.rule_name, "test_rule");
+        assert_eq!(rule.rule_version, "2.1.0");
+        assert_eq!(rule.conditions_matched.len(), 2);
+    }
+
+    #[test]
+    fn test_transformation_struct_tracks_fields() {
+        let transformation = Transformation {
+            transformation_type: "test_type".to_string(),
+            description: "Test transformation".to_string(),
+            before_length: 100,
+            after_length: 80,
+        };
+        assert_eq!(transformation.transformation_type, "test_type");
+        assert_eq!(transformation.description, "Test transformation");
+        assert_eq!(transformation.before_length, 100);
+        assert_eq!(transformation.after_length, 80);
+    }
+
+    #[test]
+    fn test_noop_normalizer_describe_rule() {
+        let normalizer = NoOpNormalizer;
+        assert_eq!(normalizer.describe_rule(), "NoOp");
+    }
+
+    #[test]
+    fn test_whitespace_normalizer_describe_rule() {
+        let normalizer = WhitespaceNormalizer;
+        let description = normalizer.describe_rule();
+        assert!(
+            description.contains("whitespace") || description.contains("Whitespace"),
+            "Expected 'whitespace' in description: {}",
+            description
+        );
+        assert!(
+            description.contains("trim"),
+            "Expected 'trim' in description: {}",
+            description
+        );
+        assert!(
+            description.contains("collapse"),
+            "Expected 'collapse' in description: {}",
+            description
+        );
+    }
+
+    #[test]
+    fn test_line_ending_normalizer_describe_rule() {
+        let normalizer = LineEndingNormalizer;
+        let description = normalizer.describe_rule().to_lowercase();
+        assert!(
+            description.contains("line ending")
+                || (description.contains("line") && description.contains("ending")),
+            "Expected 'line ending' in description: {}",
+            description
+        );
+        assert!(
+            description.contains("crlf") || description.contains("\\r\\n"),
+            "Expected CRLF in description: {}",
+            description
+        );
+    }
+
+    #[test]
+    fn test_path_normalizer_describe_rule() {
+        let normalizer = PathNormalizer;
+        let description = normalizer.describe_rule();
+        assert!(
+            description.contains("path") || description.contains("Path"),
+            "Expected 'path' in description: {}",
+            description
+        );
+    }
+
+    #[test]
+    fn test_audit_normalize_returns_tuple_for_noop() {
+        let normalizer = NoOpNormalizer;
+        let input = "hello world";
+        let (output, transformation) = normalizer.audit_normalize(input);
+        assert_eq!(output, input);
+        assert_eq!(transformation.transformation_type, "none");
+        assert_eq!(transformation.before_length, input.len());
+        assert_eq!(transformation.after_length, input.len());
+    }
+
+    #[test]
+    fn test_audit_normalize_returns_tuple_for_whitespace() {
+        let normalizer = WhitespaceNormalizer;
+        let input = "  hello   world  \n";
+        let (output, transformation) = normalizer.audit_normalize(input);
+        assert_eq!(output, "hello world");
+        assert_eq!(transformation.transformation_type, "whitespace");
+        assert_eq!(transformation.before_length, input.len());
+        assert_eq!(transformation.after_length, output.len());
+    }
+
+    #[test]
+    fn test_audit_normalize_returns_tuple_for_line_ending() {
+        let normalizer = LineEndingNormalizer;
+        let input = "hello\r\nworld\r";
+        let (output, transformation) = normalizer.audit_normalize(input);
+        assert!(!output.contains("\r\n") && !output.contains("\r"));
+        assert_eq!(transformation.transformation_type, "line_endings");
+        assert_eq!(transformation.before_length, input.len());
+        assert_eq!(transformation.after_length, output.len());
+    }
+
+    #[test]
+    fn test_audit_normalize_returns_tuple_for_path() {
+        let normalizer = PathNormalizer;
+        #[cfg(not(windows))]
+        {
+            let input = "/home/test/file.txt";
+            let (output, transformation) = normalizer.audit_normalize(input);
+            assert_eq!(output, input);
+            assert_eq!(transformation.transformation_type, "path");
+        }
+        #[cfg(windows)]
+        {
+            let input = "C:\\Users\\test\\file.txt";
+            let (output, transformation) = normalizer.audit_normalize(input);
+            assert!(output.contains('/'));
+            assert_eq!(transformation.transformation_type, "path");
+        }
     }
 
     #[test]

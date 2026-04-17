@@ -1,4 +1,4 @@
-use super::Normalizer;
+use super::{Normalizer, Transformation};
 use std::path::Path;
 
 pub struct VarianceNormalizer {
@@ -61,6 +61,34 @@ impl Normalizer for VarianceNormalizer {
 
     fn name(&self) -> &str {
         "variance"
+    }
+
+    fn describe_rule(&self) -> String {
+        if self.rules.is_empty() {
+            "Variance normalization: no patterns configured".to_string()
+        } else {
+            let patterns: Vec<String> = self
+                .rules
+                .iter()
+                .map(|(p, r)| format!("{} -> {}", p, r))
+                .collect();
+            format!("Variance normalization rules: {}", patterns.join(", "))
+        }
+    }
+
+    fn audit_normalize(&self, output: &str) -> (String, Transformation) {
+        let before_len = output.len();
+        let normalized = self.normalize(output);
+        let after_len = normalized.len();
+        (
+            normalized,
+            Transformation {
+                transformation_type: "variance".to_string(),
+                description: self.describe_rule(),
+                before_length: before_len,
+                after_length: after_len,
+            },
+        )
     }
 }
 
@@ -137,5 +165,31 @@ mod tests {
         let normalizer = VarianceNormalizer::new().with_pattern("xyz", "abc");
         let result = normalizer.normalize("hello world");
         assert_eq!(result, "hello world");
+    }
+
+    #[test]
+    fn test_variance_normalizer_describe_rule_empty() {
+        let normalizer = VarianceNormalizer::new();
+        let description = normalizer.describe_rule();
+        assert!(description.contains("no patterns"));
+    }
+
+    #[test]
+    fn test_variance_normalizer_describe_rule_with_patterns() {
+        let normalizer = VarianceNormalizer::new().with_pattern("foo", "bar");
+        let description = normalizer.describe_rule();
+        assert!(description.contains("foo"));
+        assert!(description.contains("bar"));
+    }
+
+    #[test]
+    fn test_variance_normalizer_audit_normalize() {
+        let normalizer = VarianceNormalizer::new().with_pattern("error", "ERROR");
+        let input = "some error occurred";
+        let (output, transformation) = normalizer.audit_normalize(input);
+        assert_eq!(output, "some ERROR occurred");
+        assert_eq!(transformation.transformation_type, "variance");
+        assert_eq!(transformation.before_length, input.len());
+        assert_eq!(transformation.after_length, output.len());
     }
 }
