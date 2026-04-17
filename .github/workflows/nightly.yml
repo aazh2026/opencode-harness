@@ -2,9 +2,7 @@ name: CI (Nightly Gate)
 
 on:
   schedule:
-    # Run at 2:00 AM every day
     - cron: '0 2 * * *'
-  # Allow manual triggers
   workflow_dispatch:
     inputs:
       ref:
@@ -23,52 +21,67 @@ jobs:
           ref: ${{ inputs.ref || 'main' }}
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build
-        run: cargo build --release 2>&1 || cargo build 2>&1
+        run: cargo build --release
 
-      - name: Run nightly gate checks
+      - name: Run nightly gate validation tests
         run: |
-          echo "Running nightly gate checks..."
-          echo "Schedule: ${{ github.event.schedule }}"
-          # In a real setup, this would run the full differential suite
-          # cargo run --bin parity-runner -- eval --gate nightly
+          cargo test --test ci_gate_smoke_tests -p opencode-core
+          cargo test --test report_schema_smoke_tests -p opencode-core
+          cargo test --test suite_selection_smoke_tests -p opencode-core
+          cargo check --all
 
-      - name: Generate report
+      - name: Generate nightly artifacts
         run: |
-          echo "Generating nightly parity report..."
-          # This would generate parity-report.json in a real setup
+          cargo run -p opencode-harness -- report --output json > parity-report.json
+          cargo run -p opencode-harness -- report --output md > parity-report.md
+          cargo run -p opencode-harness -- report --output junit > parity-report.xml
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('parity-report.json').read_text())
+          gate = report.get('gate_evaluation') or {}
+          summary = gate.get('summary') or {}
+          metrics = {
+              'gate_level': gate.get('level'),
+              'gate_passed': gate.get('passed'),
+              'total_tasks': summary.get('total_tasks'),
+              'passed_tasks': summary.get('passed_tasks'),
+              'failed_tasks': summary.get('failed_tasks'),
+              'error_tasks': summary.get('error_tasks'),
+              'pass_rate': summary.get('pass_rate'),
+              'trigger': 'nightly',
+          }
+          Path('metrics.json').write_text(json.dumps(metrics, indent=2) + '\n')
+          PY
 
       - name: Upload report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: parity-report-nightly-${{ github.sha }}-${{ steps.date.outputs.date }}
-          path: parity-report.json
+          name: parity-report-nightly-${{ github.sha }}
+          path: |
+            parity-report.json
+            parity-report.md
+            parity-report.xml
+            metrics.json
           retention-days: 90
 
       - name: Notify on failure
         if: failure()
         run: |
           echo "Nightly gate failed!"
-          if [ -f parity-report.json ]; then
-            echo "=== Failure Report ==="
-            cat parity-report.json
-          fi
+          cat parity-report.md || true
 
   report:
     needs: parity-nightly
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
       - name: Generate summary
         run: |
           echo "## Nightly Gate Summary" >> $GITHUB_STEP_SUMMARY
-          echo "Date: $(date)" >> $GITHUB_STEP_SUMMARY
           echo "Status: ${{ needs.parity-nightly.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

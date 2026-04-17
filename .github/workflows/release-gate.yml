@@ -18,53 +18,70 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Get version
         id: version
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           else
-            echo "VERSION=main-latest" >> $GITHUB_OUTPUT
+            echo "version=main-latest" >> "$GITHUB_OUTPUT"
           fi
-          echo "Version: ${{ steps.version.outputs.VERSION }}"
 
       - name: Build
-        run: cargo build --release 2>&1 || cargo build 2>&1
+        run: cargo build --release
 
-      - name: Run release gate checks
+      - name: Run release gate validation tests
         run: |
-          echo "Running release gate checks..."
-          echo "Version: ${{ steps.version.outputs.VERSION }}"
-          # In a real setup, this runs the full differential suite with strict thresholds
-          # cargo run --bin parity-runner -- eval --gate release
+          cargo test --test ci_gate_smoke_tests -p opencode-core
+          cargo test --test report_schema_smoke_tests -p opencode-core
+          cargo test --test suite_selection_smoke_tests -p opencode-core
+          cargo check --all
 
-      - name: Generate release report
+      - name: Generate release artifacts
         run: |
-          echo "Generating release parity report..."
-          # This would generate the final parity-report.json
+          cargo run -p opencode-harness -- report --output json > parity-report.json
+          cargo run -p opencode-harness -- report --output md > parity-report.md
+          cargo run -p opencode-harness -- report --output junit > parity-report.xml
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('parity-report.json').read_text())
+          gate = report.get('gate_evaluation') or {}
+          summary = gate.get('summary') or {}
+          metrics = {
+              'gate_level': gate.get('level'),
+              'gate_passed': gate.get('passed'),
+              'total_tasks': summary.get('total_tasks'),
+              'passed_tasks': summary.get('passed_tasks'),
+              'failed_tasks': summary.get('failed_tasks'),
+              'error_tasks': summary.get('error_tasks'),
+              'pass_rate': summary.get('pass_rate'),
+              'trigger': 'release',
+          }
+          Path('metrics.json').write_text(json.dumps(metrics, indent=2) + '\n')
+          PY
 
       - name: Upload release report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: parity-report-release-${{ steps.version.outputs.VERSION }}
-          path: parity-report.json
+          name: parity-report-release-${{ steps.version.outputs.version }}
+          path: |
+            parity-report.json
+            parity-report.md
+            parity-report.xml
+            metrics.json
           retention-days: 180
 
       - name: Create GitHub release annotation
         if: always()
         run: |
           echo "=== Release Gate Results ==="
-          if [ -f parity-report.json ]; then
-            echo "Report available: parity-report.json"
-            # In real setup, would parse JSON and create annotations
-          else
-            echo "WARNING: No report generated - release gate may have failed"
-          fi
+          cat parity-report.md
+          echo "=== Metrics ==="
+          cat metrics.json
 
   release-blocker:
     needs: parity-release
@@ -74,6 +91,4 @@ jobs:
       - name: Notify release failure
         run: |
           echo "::error::Release gate failed! Cannot proceed with release."
-          echo ""
-          echo "Please review the parity report artifact and address failures."
           exit 1

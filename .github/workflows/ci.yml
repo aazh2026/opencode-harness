@@ -14,38 +14,56 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build
-        run: cargo build --release 2>&1 || cargo build 2>&1
+        run: cargo build --release
 
-      - name: Run PR gate checks
+      - name: Run PR gate validation tests
         run: |
-          echo "Running PR gate checks..."
-          # In a real setup, this would run the differential runner
-          # cargo run --bin parity-runner -- eval --gate pr || true
+          cargo test --test ci_gate_smoke_tests -p opencode-core
+          cargo test --test report_schema_smoke_tests -p opencode-core
+          cargo test --test suite_selection_smoke_tests -p opencode-core
 
-      - name: Generate report
+      - name: Generate report artifacts
         run: |
-          echo "Generating parity report..."
-          # This would generate parity-report.json in a real setup
+          cargo run -p opencode-harness -- report --output json > parity-report.json
+          cargo run -p opencode-harness -- report --output md > parity-report.md
+          cargo run -p opencode-harness -- report --output junit > parity-report.xml
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('parity-report.json').read_text())
+          gate = report.get('gate_evaluation') or {}
+          summary = gate.get('summary') or {}
+          metrics = {
+              'gate_level': gate.get('level'),
+              'gate_passed': gate.get('passed'),
+              'total_tasks': summary.get('total_tasks'),
+              'passed_tasks': summary.get('passed_tasks'),
+              'failed_tasks': summary.get('failed_tasks'),
+              'error_tasks': summary.get('error_tasks'),
+              'pass_rate': summary.get('pass_rate'),
+          }
+          Path('metrics.json').write_text(json.dumps(metrics, indent=2) + '\n')
+          PY
 
       - name: Upload report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: parity-report-pr-${{ github.sha }}
-          path: parity-report.json
+          path: |
+            parity-report.json
+            parity-report.md
+            parity-report.xml
+            metrics.json
           retention-days: 30
 
       - name: Display results
         if: always()
         run: |
-          if [ -f parity-report.json ]; then
-            echo "=== PR Gate Results ==="
-            cat parity-report.json || echo "Report generation failed"
-          else
-            echo "No report generated - PR gate skipped or failed early"
-          fi
+          echo "=== PR Gate Results ==="
+          cat parity-report.md
+          echo "=== Metrics ==="
+          cat metrics.json
