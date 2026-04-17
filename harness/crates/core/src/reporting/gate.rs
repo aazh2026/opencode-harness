@@ -142,7 +142,7 @@ impl GateFailure {
                     "Error rate exceeded: {}/{} ({:.1}%, threshold: {:.1}%)",
                     error_count,
                     total_tasks,
-                    (*error_count as f64 / u64::max(*total_tasks as u64, 1) as f64) * 100.0,
+                    (*error_count as f64 / (*total_tasks).max(1) as f64) * 100.0,
                     threshold * 100.0
                 )
             }
@@ -581,5 +581,56 @@ mod tests {
         let summary = gate.summary_string();
         assert!(summary.contains("PR Gate"));
         assert!(summary.contains("90"));
+    }
+
+    #[test]
+    fn test_error_rate_exceeded_description_zero_tasks() {
+        let failure = GateFailure::ErrorRateExceeded {
+            error_count: 0,
+            total_tasks: 0,
+            threshold: 0.1,
+        };
+        let desc = failure.description();
+        assert!(desc.contains("0.0%"), "Expected 0.0% for zero tasks, got: {}", desc);
+        assert!(desc.contains("0/0"), "Expected 0/0 format, got: {}", desc);
+    }
+
+    #[test]
+    fn test_error_rate_exceeded_description_one_error_out_of_ten() {
+        let failure = GateFailure::ErrorRateExceeded {
+            error_count: 1,
+            total_tasks: 10,
+            threshold: 0.1,
+        };
+        let desc = failure.description();
+        assert!(desc.contains("10.0%"), "Expected 10.0% for 1/10, got: {}", desc);
+        assert!(desc.contains("1/10"), "Expected 1/10 format, got: {}", desc);
+    }
+
+    #[test]
+    fn test_error_rate_exceeded_description_five_errors_out_of_ten() {
+        let failure = GateFailure::ErrorRateExceeded {
+            error_count: 5,
+            total_tasks: 10,
+            threshold: 0.1,
+        };
+        let desc = failure.description();
+        assert!(desc.contains("50.0%"), "Expected 50.0% for 5/10, got: {}", desc);
+        assert!(desc.contains("5/10"), "Expected 5/10 format, got: {}", desc);
+    }
+
+    #[test]
+    fn test_error_rate_exceeded_description_format() {
+        let failure = GateFailure::ErrorRateExceeded {
+            error_count: 3,
+            total_tasks: 20,
+            threshold: 0.1,
+        };
+        let desc = failure.description();
+        assert!(desc.contains("Error rate exceeded:"), "Expected 'Error rate exceeded:' prefix, got: {}", desc);
+        assert!(desc.contains("3/20"), "Expected '3/20' format, got: {}", desc);
+        assert!(desc.contains("15.0%"), "Expected '15.0%' error rate, got: {}", desc);
+        assert!(desc.contains("threshold:"), "Expected 'threshold:' in description, got: {}", desc);
+        assert!(desc.contains("10.0%"), "Expected '10.0%' threshold, got: {}", desc);
     }
 }
