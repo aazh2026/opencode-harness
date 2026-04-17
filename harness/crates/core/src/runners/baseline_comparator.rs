@@ -578,4 +578,184 @@ mod tests {
         assert!(!result.legacy_regression);
         assert!(!result.rust_regression);
     }
+
+    #[test]
+    fn baseline_compare_smoke_tests() {
+        use crate::loaders::baseline_loader::{BaselineLoader, DefaultBaselineLoader};
+        use crate::normalizers::normalizer::NoOpNormalizer;
+        use crate::types::baseline::BaselineMetadata;
+        use crate::types::runner_output::RunnerOutput;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let loader = DefaultBaselineLoader::new(temp_dir.path().to_path_buf());
+        let normalizer = NoOpNormalizer;
+        let comparator = DefaultBaselineComparator::new(Arc::new(normalizer));
+
+        let metadata = BaselineMetadata::new()
+            .with_source_impl_version("1.0.0".to_string())
+            .with_target_impl_version("2.0.0".to_string())
+            .with_task_version("1.2.0".to_string())
+            .with_fixture_version("1.1.0".to_string())
+            .with_normalizer_version("1.0.5".to_string());
+
+        let baseline_legacy_output = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("baseline legacy output".to_string())
+            .with_stderr("".to_string());
+
+        let baseline_rust_output = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("baseline rust output".to_string())
+            .with_stderr("".to_string());
+
+        let baseline = BaselineRecord::new(
+            "smoke-baseline-001".to_string(),
+            "TASK-SMOKE-001".to_string(),
+            metadata,
+            baseline_legacy_output.clone(),
+            baseline_rust_output.clone(),
+            "baseline legacy output".to_string(),
+            "baseline rust output".to_string(),
+            ParityVerdict::Pass,
+            Utc::now(),
+            None,
+            None,
+        );
+
+        loader.save(&baseline).unwrap();
+
+        let loaded = loader.load("TASK-SMOKE-001", "smoke-baseline-001");
+        assert!(loaded.is_ok(), "Loading baseline should succeed");
+        assert!(
+            loaded.as_ref().unwrap().is_some(),
+            "Baseline should exist after save"
+        );
+
+        let loaded_baseline = loaded.unwrap().unwrap();
+        assert_eq!(
+            loaded_baseline.id, "smoke-baseline-001",
+            "Loaded baseline ID should match"
+        );
+        assert_eq!(
+            loaded_baseline.normalized_legacy, "baseline legacy output",
+            "Loaded normalized legacy should match"
+        );
+        assert_eq!(
+            loaded_baseline.normalized_rust, "baseline rust output",
+            "Loaded normalized rust should match"
+        );
+
+        let identical_legacy = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("baseline legacy output".to_string());
+        let identical_rust = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("baseline rust output".to_string());
+
+        let legacy_result: Result<RunnerOutput> = Ok(identical_legacy.clone());
+        let rust_result: Result<RunnerOutput> = Ok(identical_rust.clone());
+
+        let identical_result = comparator
+            .compare_against_baseline(&loaded_baseline, &legacy_result, &rust_result)
+            .unwrap();
+
+        assert!(
+            !identical_result.legacy_regression,
+            "Identical legacy output should not show regression"
+        );
+        assert!(
+            !identical_result.rust_regression,
+            "Identical rust output should not show regression"
+        );
+        assert!(
+            identical_result.current_legacy_verdict.is_pass(),
+            "Identical legacy should produce Pass verdict"
+        );
+        assert!(
+            identical_result.current_rust_verdict.is_pass(),
+            "Identical rust should produce Pass verdict"
+        );
+
+        let changed_legacy = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("changed legacy output".to_string());
+        let unchanged_rust = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("baseline rust output".to_string());
+
+        let legacy_regress_result = comparator
+            .compare_against_baseline(&loaded_baseline, &Ok(changed_legacy), &Ok(unchanged_rust))
+            .unwrap();
+
+        assert!(
+            legacy_regress_result.legacy_regression,
+            "Changed legacy output should show legacy regression"
+        );
+        assert!(
+            !legacy_regress_result.rust_regression,
+            "Unchanged rust output should not show rust regression"
+        );
+        assert!(
+            legacy_regress_result.current_legacy_verdict.is_different(),
+            "Changed legacy should produce Fail verdict"
+        );
+        assert!(
+            legacy_regress_result.current_rust_verdict.is_pass(),
+            "Unchanged rust should produce Pass verdict"
+        );
+
+        let unchanged_legacy = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("baseline legacy output".to_string());
+        let changed_rust = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("changed rust output".to_string());
+
+        let rust_regress_result = comparator
+            .compare_against_baseline(&loaded_baseline, &Ok(unchanged_legacy), &Ok(changed_rust))
+            .unwrap();
+
+        assert!(
+            !rust_regress_result.legacy_regression,
+            "Unchanged legacy output should not show legacy regression"
+        );
+        assert!(
+            rust_regress_result.rust_regression,
+            "Changed rust output should show rust regression"
+        );
+        assert!(
+            rust_regress_result.current_legacy_verdict.is_pass(),
+            "Unchanged legacy should produce Pass verdict"
+        );
+        assert!(
+            rust_regress_result.current_rust_verdict.is_different(),
+            "Changed rust should produce Fail verdict"
+        );
+
+        let legacy_error: Result<RunnerOutput> =
+            Err(ErrorType::Runner("Legacy runner failed".to_string()));
+        let rust_success = RunnerOutput::default()
+            .with_exit_code(Some(0))
+            .with_stdout("baseline rust output".to_string());
+
+        let error_result = comparator
+            .compare_against_baseline(&loaded_baseline, &legacy_error, &Ok(rust_success))
+            .unwrap();
+
+        assert!(
+            error_result.legacy_regression,
+            "Legacy error should show as regression"
+        );
+        assert!(
+            !error_result.rust_regression,
+            "Successful rust should not show regression"
+        );
+
+        loader
+            .delete("TASK-SMOKE-001", "smoke-baseline-001")
+            .unwrap();
+        let missing = loader.load("TASK-SMOKE-001", "smoke-baseline-001").unwrap();
+        assert!(missing.is_none(), "Baseline should be deleted");
+    }
 }
