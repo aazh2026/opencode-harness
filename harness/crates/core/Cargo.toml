@@ -16,6 +16,8 @@ toml.workspace = true
 regex.workspace = true
 chrono.workspace = true
 uuid.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
 tempfile = "3"
 comparators = { path = "../../comparators" }
 

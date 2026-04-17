@@ -12,6 +12,7 @@ use crate::types::task::Task;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+use tracing::{debug, error, info, warn};
 
 pub struct DifferentialRunner<L: TaskLoader> {
     pub task_loader: L,
@@ -25,16 +26,32 @@ impl<L: TaskLoader> DifferentialRunner<L> {
     pub fn execute(&self, input: &RunnerInput) -> Result<DifferentialResult> {
         let start = Instant::now();
         let run_id = format!("run-{}", uuid::Uuid::new_v4());
+        info!("Starting differential execution with run_id: {}", run_id);
+        debug!(
+            "Task ID: {}, timeout: {}s",
+            input.task.id, input.timeout_seconds
+        );
+
         let artifact_persister = ArtifactPersister::new(&run_id, PathBuf::from("artifacts"));
         artifact_persister.create_directory_structure()?;
+        debug!(
+            "Artifact directory structure created for run_id: {}",
+            run_id
+        );
 
         let legacy_runner = LegacyRunner::new("legacy");
         let rust_runner = RustRunner::new("rust");
 
+        info!("Executing legacy runner");
         let legacy_result = legacy_runner.execute(input);
+        debug!("Legacy runner completed");
+
+        info!("Executing rust runner");
         let rust_result = rust_runner.execute(input);
+        debug!("Rust runner completed");
 
         let verdict = self.determine_verdict_from_outputs(&legacy_result, &rust_result, input);
+        info!("Verdict determined: {:?}", verdict);
 
         let duration_ms = start.elapsed().as_millis() as u64;
 
@@ -49,6 +66,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
 
         match (legacy_result, rust_result) {
             (Ok(lr), Ok(rr)) => {
+                info!("Both runners succeeded, determining verdict");
                 let legacy_paths = lr.artifact_paths.clone();
                 let rust_paths = rr.artifact_paths.clone();
                 let failure_kind = match &verdict {
@@ -58,6 +76,9 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                     },
                     _ => None,
                 };
+                if failure_kind.is_some() {
+                    warn!("Differential result has failure_kind: {:?}", failure_kind);
+                }
                 Ok(DifferentialResult {
                     task_id: input.task.id.clone(),
                     legacy_result: Some(lr.into()),
@@ -74,6 +95,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             (Err(e), Ok(rr)) => {
                 let runner = "LegacyRunner".to_string();
                 let reason = e.to_string();
+                error!("Legacy runner failed: {}", reason);
                 let rust_paths = rr.artifact_paths.clone();
                 let failure_kind = if reason.contains("Binary resolution failed")
                     || reason.contains("does not exist")
@@ -98,6 +120,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             (Ok(lr), Err(e)) => {
                 let runner = "RustRunner".to_string();
                 let reason = e.to_string();
+                error!("Rust runner failed: {}", reason);
                 let legacy_paths = lr.artifact_paths.clone();
                 let failure_kind = if reason.contains("does not exist") {
                     Some(FailureClassification::DependencyMissing)
@@ -119,6 +142,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             }
             (Err(e1), Err(e2)) => {
                 let reason = format!("legacy: {}; rust: {}", e1, e2);
+                error!("Both runners failed: {}", reason);
                 let failure_kind = if reason.contains("does not exist") {
                     Some(FailureClassification::DependencyMissing)
                 } else {

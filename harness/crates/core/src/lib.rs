@@ -1,6 +1,7 @@
 pub mod config;
 pub mod error;
 pub mod loaders;
+pub mod logging;
 pub mod normalizers;
 pub mod runners;
 pub mod types;

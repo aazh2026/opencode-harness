@@ -9,6 +9,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
 pub struct ArtifactPersister {
@@ -71,11 +72,26 @@ impl ArtifactPersister {
             })?;
         }
 
+        info!(
+            "Created artifact directory structure for run_id: {}",
+            self.run_id
+        );
+        debug!(
+            "Directories created: legacy={}, rust={}, diff={}",
+            self.legacy_path.display(),
+            self.rust_path.display(),
+            self.diff_path.display()
+        );
         Ok(())
     }
 
     pub fn persist_stdout(&self, content: &str, runner_type: RunnerType) -> Result<PathBuf> {
         let path = self.stdout_path(runner_type);
+        debug!(
+            "Persisting stdout ({} bytes) to: {}",
+            content.len(),
+            path.display()
+        );
         fs::write(&path, content).map_err(|e| {
             ErrorType::Runner(format!(
                 "Failed to write stdout to '{}': {}",
@@ -88,6 +104,11 @@ impl ArtifactPersister {
 
     pub fn persist_stderr(&self, content: &str, runner_type: RunnerType) -> Result<PathBuf> {
         let path = self.stderr_path(runner_type);
+        debug!(
+            "Persisting stderr ({} bytes) to: {}",
+            content.len(),
+            path.display()
+        );
         fs::write(&path, content).map_err(|e| {
             ErrorType::Runner(format!(
                 "Failed to write stderr to '{}': {}",
@@ -206,6 +227,7 @@ impl ArtifactPersister {
         };
 
         let report_path = self.diff_path.join("report.json");
+        info!("Generating diff report at: {}", report_path.display());
         let json = serde_json::to_string_pretty(&diff_data)
             .map_err(|e| ErrorType::Runner(format!("Failed to serialize diff report: {}", e)))?;
 
@@ -222,6 +244,7 @@ impl ArtifactPersister {
         rust_output: &RunnerOutput,
     ) -> Result<PathBuf> {
         let verdict_path = self.diff_path.join("verdict.md");
+        info!("Generating verdict markdown at: {}", verdict_path.display());
         let content = format!(
             "# Differential Verdict\n\n\
             ## Run ID: {}\n\n\
@@ -309,6 +332,7 @@ impl ArtifactPersister {
         failure_kind: Option<FailureClassification>,
         capability_summary: CapabilitySummary,
     ) -> Result<RunnerOutput> {
+        debug!("Building runner output for {:?}", runner_type);
         let stdout_path = self.persist_stdout(&stdout, runner_type.clone())?;
         let stderr_path = self.persist_stderr(&stderr, runner_type.clone())?;
 
@@ -327,11 +351,16 @@ impl ArtifactPersister {
         let _ = self.persist_metadata(&metadata, runner_type.clone())?;
 
         let artifact_paths = self.persist_artifacts(&artifacts, runner_type.clone())?;
+        debug!("Persisted {} artifacts", artifact_paths.len());
 
         let event_log_path = self.event_log_path(runner_type);
         fs::write(&event_log_path, format!("{:?}", session_metadata))
             .map_err(|e| ErrorType::Runner(format!("Failed to write event log: {}", e)))?;
 
+        info!(
+            "Runner output built for task_id: {}",
+            session_metadata.task_id
+        );
         Ok(RunnerOutput::new(
             exit_code,
             stdout,

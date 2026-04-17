@@ -8,6 +8,8 @@ license.workspace = true
 [dependencies]
 clap = { workspace = true }
 opencode-core = { path = "../core" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [[bin]]
 name = "opencode-harness"
