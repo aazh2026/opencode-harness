@@ -11,3 +11,4 @@ pub use normalizer::{
     WhitespaceNormalizer,
 };
 pub use variance::VarianceNormalizer;
+pub use whitelist_validator::{ValidationError, ValidationResult, WhitelistValidator};
