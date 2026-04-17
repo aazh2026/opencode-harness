@@ -51,6 +51,7 @@ impl SideEffectVerificationResult {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn fail(
         category: DiffCategory,
         details: String,
@@ -316,8 +317,8 @@ impl DefaultSideEffectVerifier {
         let modified: Vec<PathBuf> = before_entries
             .intersection(&after_entries)
             .filter(|k| {
-                let before_entry = before.entries.iter().find(|e| &e.path == k.as_path());
-                let after_entry = after.entries.iter().find(|e| &e.path == k.as_path());
+                let before_entry = before.entries.iter().find(|e| e.path == *k.as_path());
+                let after_entry = after.entries.iter().find(|e| e.path == *k.as_path());
                 match (before_entry, after_entry) {
                     (Some(b), Some(a)) => {
                         b.size_bytes != a.size_bytes || b.permissions != a.permissions

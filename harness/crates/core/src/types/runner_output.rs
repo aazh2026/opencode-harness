@@ -24,6 +24,7 @@ pub struct RunnerOutput {
 }
 
 impl RunnerOutput {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         exit_code: Option<i32>,
         stdout: String,

@@ -1,3 +1,5 @@
+#![allow(clippy::module_inception)]
+
 pub mod logging {
     use tracing::Level;
     use tracing_subscriber::{fmt, prelude::*, EnvFilter};

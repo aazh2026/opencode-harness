@@ -30,6 +30,7 @@ pub struct RegressionCase {
 }
 
 impl RegressionCase {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: String,
         issue_link: String,

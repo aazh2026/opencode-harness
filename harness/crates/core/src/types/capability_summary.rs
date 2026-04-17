@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct CapabilitySummary {
     pub binary_available: bool,
     pub workspace_prepared: bool,
@@ -58,19 +58,6 @@ impl CapabilitySummary {
     pub fn with_side_effects_detected(mut self, side_effects_detected: Vec<PathBuf>) -> Self {
         self.side_effects_detected = side_effects_detected;
         self
-    }
-}
-
-impl Default for CapabilitySummary {
-    fn default() -> Self {
-        Self {
-            binary_available: false,
-            workspace_prepared: false,
-            environment_supported: false,
-            timeout_enforced: false,
-            artifacts_collected: 0,
-            side_effects_detected: Vec::new(),
-        }
     }
 }
 

@@ -22,6 +22,7 @@ pub struct WhitelistEntry {
 }
 
 impl WhitelistEntry {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: String,
         scope: WhitelistScope,

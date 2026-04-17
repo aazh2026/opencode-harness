@@ -116,17 +116,19 @@ impl BaselineRecorder for DefaultBaselineRecorder {
 
         let verdict = Self::compute_verdict(legacy_result, rust_result);
 
-        let raw_legacy_path = if legacy_output.stdout_path != PathBuf::from("/tmp/stdout.txt") {
-            Some(legacy_output.stdout_path.clone())
-        } else {
-            None
-        };
+        let raw_legacy_path =
+            if legacy_output.stdout_path.as_path() != PathBuf::from("/tmp/stdout.txt").as_path() {
+                Some(legacy_output.stdout_path.clone())
+            } else {
+                None
+            };
 
-        let raw_rust_path = if rust_output.stdout_path != PathBuf::from("/tmp/stdout.txt") {
-            Some(rust_output.stdout_path.clone())
-        } else {
-            None
-        };
+        let raw_rust_path =
+            if rust_output.stdout_path.as_path() != PathBuf::from("/tmp/stdout.txt").as_path() {
+                Some(rust_output.stdout_path.clone())
+            } else {
+                None
+            };
 
         let record = BaselineRecord::new(
             baseline_id.clone(),

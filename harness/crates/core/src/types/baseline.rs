@@ -124,6 +124,7 @@ pub struct BaselineRecord {
 }
 
 impl BaselineRecord {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: String,
         task_id: String,

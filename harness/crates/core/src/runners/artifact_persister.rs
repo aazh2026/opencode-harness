@@ -467,6 +467,7 @@ impl ArtifactPersister {
         Ok(verdict_path)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn build_runner_output(
         &self,
         runner_type: RunnerType,

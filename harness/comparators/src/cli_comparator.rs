@@ -138,21 +138,16 @@ impl CliComparator {
         let output_result = self.output_comparator.compare(output1, output2);
 
         if let Some(tolerance) = self.config.timing_tolerance_ms {
-            let timing_diff = if timing1_ms > timing2_ms {
-                timing1_ms - timing2_ms
-            } else {
-                timing2_ms - timing1_ms
-            };
+            let timing_diff = timing1_ms.abs_diff(timing2_ms);
 
-            if timing_diff <= tolerance {
-                if output_result.outcome == ComparisonOutcome::StronglyEquivalent
-                    || output_result.outcome == ComparisonOutcome::SemanticallyEquivalent
-                {
-                    return ComparisonResult::allowed_variance(format!(
-                        "Timing diff {}ms within tolerance {}ms, outputs equivalent",
-                        timing_diff, tolerance
-                    ));
-                }
+            if timing_diff <= tolerance
+                && (output_result.outcome == ComparisonOutcome::StronglyEquivalent
+                    || output_result.outcome == ComparisonOutcome::SemanticallyEquivalent)
+            {
+                return ComparisonResult::allowed_variance(format!(
+                    "Timing diff {}ms within tolerance {}ms, outputs equivalent",
+                    timing_diff, tolerance
+                ));
             }
         }
 

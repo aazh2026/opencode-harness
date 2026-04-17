@@ -372,16 +372,16 @@ impl WorkspaceComparator {
 
 impl Comparator for WorkspaceComparator {
     fn compare(&self, output1: &str, output2: &str) -> ComparisonResult {
-        if let Ok(_) = FileTreeSnapshotData::parse_from_json(output1) {
-            if let Ok(_) = FileTreeSnapshotData::parse_from_json(output2) {
-                return self.file_tree_comparator.compare(output1, output2);
-            }
+        if FileTreeSnapshotData::parse_from_json(output1).is_ok()
+            && FileTreeSnapshotData::parse_from_json(output2).is_ok()
+        {
+            return self.file_tree_comparator.compare(output1, output2);
         }
 
-        if let Ok(_) = GitStatusData::parse_from_json(output1) {
-            if let Ok(_) = GitStatusData::parse_from_json(output2) {
-                return self.git_comparator.compare(output1, output2);
-            }
+        if GitStatusData::parse_from_json(output1).is_ok()
+            && GitStatusData::parse_from_json(output2).is_ok()
+        {
+            return self.git_comparator.compare(output1, output2);
         }
 
         ComparisonResult::incomparable(

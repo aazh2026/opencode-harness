@@ -61,7 +61,7 @@ impl TimingStats {
 }
 
 /// Collects and computes metrics from task results.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MetricsCollector {
     /// Total number of tasks processed.
     pub total_tasks: u32,
@@ -69,16 +69,6 @@ pub struct MetricsCollector {
     pub verdict_counts: BTreeMap<String, u32>,
     /// Timing statistics.
     pub timing_stats: TimingStats,
-}
-
-impl Default for MetricsCollector {
-    fn default() -> Self {
-        Self {
-            total_tasks: 0,
-            verdict_counts: BTreeMap::new(),
-            timing_stats: TimingStats::default(),
-        }
-    }
 }
 
 impl MetricsCollector {

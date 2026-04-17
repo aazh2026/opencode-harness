@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 pub struct RegressionCandidateGenerator {
+    #[allow(dead_code)]
     fixture_loader: Arc<dyn FixtureLoader>,
     normalizer: Arc<dyn Normalizer>,
 }
