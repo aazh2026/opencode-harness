@@ -30,7 +30,7 @@ pub use agent_mode::AgentMode;
 pub use allowed_variance::{AllowedVariance, TimingVariance};
 pub use artifact::{Artifact, ArtifactKind};
 pub use assertion::AssertionType;
-pub use baseline::BaselineMetadata;
+pub use baseline::{BaselineMetadata, BaselineRecord};
 pub use capability_summary::CapabilitySummary;
 pub use capture_options::CaptureOptions;
 pub use entry_mode::EntryMode;
