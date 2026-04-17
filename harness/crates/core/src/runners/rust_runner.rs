@@ -377,7 +377,7 @@ impl RustRunner {
 }
 
 #[cfg(test)]
-mod tests {
+mod timeout {
     use super::*;
     use crate::types::capture_options::CaptureOptions;
     use crate::types::provider_mode::ProviderMode;
