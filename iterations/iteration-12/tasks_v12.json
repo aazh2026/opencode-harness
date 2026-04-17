@@ -696,7 +696,7 @@
       "priority": "P1",
       "title": "Interrupted operation recovery",
       "description": "Operations interrupted by connection loss can be recovered and completed",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify interrupted file write operation resumes correctly",
         "AddIntegrationTest: verify interrupted git operation can be completed after reconnection",
@@ -717,7 +717,7 @@
       "priority": "P1",
       "title": "Server restart handling",
       "description": "Client handles server restart and reconnects automatically",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify client reconnects automatically after server restart",
         "AddIntegrationTest: verify session state is preserved across server restart",
