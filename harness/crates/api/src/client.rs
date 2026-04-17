@@ -155,6 +155,39 @@ impl ApiClient {
             Err(ApiClientError::UnexpectedStatus(status))
         }
     }
+
+    pub async fn resume_session(
+        &self,
+        session_id: &str,
+    ) -> Result<ResumeSessionResponse, ApiClientError> {
+        let url = format!("{}/sessions/{}/resume", self.base_url, session_id);
+        let mut request = self.client.post(&url);
+
+        if let Some(token) = &self.auth_token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request
+            .send()
+            .await
+            .map_err(ApiClientError::Request)?;
+
+        let status = response.status();
+        if status.is_success() {
+            response
+                .json()
+                .await
+                .map_err(ApiClientError::Response)
+        } else if status.as_u16() == 404 {
+            Err(ApiClientError::NotFound)
+        } else if status.as_u16() == 401 {
+            Err(ApiClientError::Unauthorized)
+        } else if status.as_u16() == 410 {
+            Err(ApiClientError::Gone)
+        } else {
+            Err(ApiClientError::UnexpectedStatus(status))
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -169,6 +202,8 @@ pub enum ApiClientError {
     Unauthorized,
     #[error("Not found")]
     NotFound,
+    #[error("Gone")]
+    Gone,
     #[error("Unexpected status: {0}")]
     UnexpectedStatus(reqwest::StatusCode),
 }

@@ -188,6 +188,93 @@ mod tests {
             now
         );
     }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_006_resume_session_returns_session_state() {
+        let client = create_test_client();
+
+        let config = SessionConfig {
+            project_id: Some("test-project".to_string()),
+            metadata: None,
+        };
+
+        let create_result = client.create_session(Some(config)).await;
+        assert!(create_result.is_ok(), "Session creation failed: {:?}", create_result);
+        let session_id = create_result.unwrap().session_id;
+
+        let resume_result = client.resume_session(&session_id).await;
+        assert!(resume_result.is_ok(), "Resume session failed: {:?}", resume_result);
+        let resumed_session = resume_result.unwrap();
+
+        assert_eq!(
+            resumed_session.session_id, session_id,
+            "Expected session_id to match, got: {}, expected: {}",
+            resumed_session.session_id, session_id
+        );
+        assert!(
+            resumed_session.resumed,
+            "Expected resumed flag to be true"
+        );
+
+        let _ = client.delete_session(&session_id).await;
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_006_resume_existing_session_resumes() {
+        let client = create_test_client();
+
+        let config = SessionConfig {
+            project_id: Some("test-project".to_string()),
+            metadata: None,
+        };
+
+        let create_result = client.create_session(Some(config)).await;
+        assert!(create_result.is_ok(), "Session creation failed: {:?}", create_result);
+        let session_id = create_result.unwrap().session_id;
+
+        let resume_result = client.resume_session(&session_id).await;
+        assert!(resume_result.is_ok(), "Expected resume to succeed for existing session");
+
+        let _ = client.delete_session(&session_id).await;
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_006_resume_nonexistent_session_returns_404() {
+        let client = create_test_client();
+
+        let result = client.resume_session("nonexistent-session-id").await;
+
+        match result {
+            Err(ApiClientError::NotFound) => {},
+            other => panic!("Expected NotFound error for nonexistent session, got: {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_006_resume_expired_session_returns_410() {
+        let client = create_test_client();
+
+        let config = SessionConfig {
+            project_id: Some("test-project".to_string()),
+            metadata: None,
+        };
+
+        let create_result = client.create_session(Some(config)).await;
+        assert!(create_result.is_ok());
+        let session_id = create_result.unwrap().session_id;
+
+        let _ = client.delete_session(&session_id).await;
+
+        let resume_result = client.resume_session(&session_id).await;
+        match resume_result {
+            Err(ApiClientError::Gone) | Err(ApiClientError::NotFound) => {},
+            other => panic!("Expected Gone or NotFound error for expired session, got: {:?}", other),
+        }
+    }
 }
 
 pub mod integration_tests {

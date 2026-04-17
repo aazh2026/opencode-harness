@@ -31,6 +31,6 @@ tags:
   - api
   - session
   - resume
-execution_policy: ManualCheck
+execution_policy: Automatic
 timeout_seconds: 30
 on_missing_dependency: Blocked

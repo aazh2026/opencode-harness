@@ -335,7 +335,7 @@
       "priority": "P1",
       "title": "Session create via API",
       "description": "API endpoint to create a new session with specified configuration",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify POST /sessions creates new session and returns session_id",
         "AddIntegrationTest: verify POST /sessions with valid config returns 201 Created",
@@ -356,7 +356,7 @@
       "priority": "P1",
       "title": "Session resume via API",
       "description": "API endpoint to resume an existing session by session_id",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddIntegrationTest: verify POST /sessions/{id}/resume resumes existing session",
         "AddIntegrationTest: verify POST /sessions/{id}/resume with valid session_id returns session state",

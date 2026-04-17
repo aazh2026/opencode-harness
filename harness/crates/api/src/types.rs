@@ -75,3 +75,33 @@ impl ApiError {
         self
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResumeSessionResponse {
+    pub session_id: String,
+    pub resumed: bool,
+    pub status: SessionStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace: Option<WorkspaceState>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceState {
+    pub cwd: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<String>>,
+}
+
+impl From<Session> for ResumeSessionResponse {
+    fn from(session: Session) -> Self {
+        Self {
+            session_id: session.id,
+            resumed: true,
+            status: session.status,
+            project_id: session.project_id,
+            workspace: None,
+        }
+    }
+}
