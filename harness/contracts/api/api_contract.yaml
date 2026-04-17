@@ -1,0 +1,1003 @@
+contract_id: API-CONTRACT-001
+name: Server/API Contract
+version: 1.0.0
+description: Verifies API endpoint parity between opencode and opencode-rs covering server lifecycle, /doc, auth, CORS, session/project interfaces, event subscription, message/command interface, file operations interface, and tool registration interface.
+
+openapi: "3.0.3"
+info:
+  title: opencode API
+  version: "1.0.0"
+  description: API contract for opencode server endpoints
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check endpoint
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /doc:
+    get:
+      operationId: getDoc
+      summary: Documentation endpoint
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Documentation response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/token:
+    post:
+      operationId: getToken
+      summary: Obtain authentication token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRequest"
+      responses:
+        "200":
+          description: Token obtained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Refresh authentication token
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /session:
+    get:
+      operationId: listSessions
+      summary: List all sessions
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Session"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      operationId: createSession
+      summary: Create a new session
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /session/{session_id}:
+    get:
+      operationId: getSession
+      summary: Get session by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      operationId: terminateSession
+      summary: Terminate session
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session terminated
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /session/{session_id}/resume:
+    post:
+      operationId: resumeSession
+      summary: Resume an existing session
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /project:
+    get:
+      operationId: listProjects
+      summary: List all projects
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Project"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      operationId: createProject
+      summary: Create a new project
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /project/{project_id}:
+    delete:
+      operationId: deleteProject
+      summary: Delete a project
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Project deleted
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /message:
+    post:
+      operationId: sendMessage
+      summary: Send a message or command
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageRequest"
+      responses:
+        "200":
+          description: Message processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /command:
+    post:
+      operationId: sendCommand
+      summary: Send a command
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandRequest"
+      responses:
+        "200":
+          description: Command processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /file/read:
+    post:
+      operationId: readFile
+      summary: Read a file
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FileReadRequest"
+      responses:
+        "200":
+          description: File content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileReadResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /file/write:
+    post:
+      operationId: writeFile
+      summary: Write a file
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FileWriteRequest"
+      responses:
+        "200":
+          description: File written
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileWriteResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /file/delete:
+    post:
+      operationId: deleteFile
+      summary: Delete a file
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FileDeleteRequest"
+      responses:
+        "204":
+          description: File deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /tools:
+    get:
+      operationId: listTools
+      summary: List available tools
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of tools
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tools:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Tool"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /tools/register:
+    post:
+      operationId: registerTool
+      summary: Register a new tool
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolRegistrationRequest"
+      responses:
+        "200":
+          description: Tool registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tool"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /events/subscribe:
+    get:
+      operationId: subscribeEvents
+      summary: Subscribe to event stream
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Event stream
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
+  /server/start:
+    post:
+      operationId: startServer
+      summary: Start the server
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServerStartRequest"
+      responses:
+        "200":
+          description: Server started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerStatus"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /server/stop:
+    post:
+      operationId: stopServer
+      summary: Stop the server
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Server stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerStatus"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        version:
+          type: string
+
+    DocResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        version:
+          type: string
+        endpoints:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              method:
+                type: string
+              description:
+                type: string
+
+    TokenRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: integer
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    Session:
+      type: object
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [new, active, waiting_approval, done, terminated]
+        project_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateSessionRequest:
+      type: object
+      properties:
+        project_id:
+          type: string
+        metadata:
+          type: object
+
+    Project:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateProjectRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+
+    MessageRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+        session_id:
+          type: string
+        context:
+          type: object
+
+    MessageResponse:
+      type: object
+      required:
+        - message_id
+        - content
+      properties:
+        message_id:
+          type: string
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    CommandRequest:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+        args:
+          type: object
+        session_id:
+          type: string
+
+    CommandResponse:
+      type: object
+      required:
+        - command_id
+        - result
+      properties:
+        command_id:
+          type: string
+        result:
+          type: object
+        success:
+          type: boolean
+        error:
+          type: string
+
+    FileReadRequest:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+        encoding:
+          type: string
+          default: utf-8
+
+    FileReadResponse:
+      type: object
+      required:
+        - path
+        - content
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+        encoding:
+          type: string
+
+    FileWriteRequest:
+      type: object
+      required:
+        - path
+        - content
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+        encoding:
+          type: string
+
+    FileWriteResponse:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+        bytes_written:
+          type: integer
+
+    FileDeleteRequest:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+
+    Tool:
+      type: object
+      required:
+        - name
+        - version
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        schema:
+          type: object
+
+    ToolRegistrationRequest:
+      type: object
+      required:
+        - name
+        - version
+        - schema
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        schema:
+          type: object
+        handler:
+          type: string
+
+    Event:
+      type: object
+      required:
+        - event_type
+        - timestamp
+      properties:
+        event_type:
+          type: string
+          enum:
+            - session_created
+            - session_resumed
+            - session_terminated
+            - project_created
+            - project_deleted
+            - message_received
+            - command_executed
+            - tool_registered
+            - file_modified
+            - error_occurred
+        timestamp:
+          type: string
+          format: date-time
+        payload:
+          type: object
+        session_id:
+          type: string
+        project_id:
+          type: string
+
+    ServerStartRequest:
+      type: object
+      properties:
+        port:
+          type: integer
+          default: 8080
+        host:
+          type: string
+          default: localhost
+
+    ServerStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [running, stopped, error]
+        version:
+          type: string
+        uptime_seconds:
+          type: integer
+
+cors:
+  allowed_origins:
+    - "*"
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+  allowed_headers:
+    - Content-Type
+    - Authorization
+    - X-Requested-With
+    - X-Session-ID
+  exposed_headers:
+    - X-Session-ID
+  allow_credentials: true
+  max_age_seconds: 3600
+
+assertions:
+  - type: server_startup
+    severity: P0
+    description: Server must start and respond to /health
+
+  - type: server_shutdown
+    severity: P0
+    description: Server must shutdown gracefully via /server/stop
+
+  - type: doc_endpoint
+    severity: P0
+    description: /doc must return API documentation
+
+  - type: auth_token_obtain
+    severity: P0
+    description: /auth/token must issue valid JWT token
+
+  - type: auth_token_refresh
+    severity: P0
+    description: /auth/refresh must issue new token before expiration
+
+  - type: cors_headers
+    severity: P0
+    description: CORS headers must be present on all responses
+
+  - type: session_create
+    severity: P0
+    description: /session POST must create new session
+
+  - type: session_resume
+    severity: P0
+    description: /session/{id}/resume must restore session state
+
+  - type: session_terminate
+    severity: P0
+    description: /session/{id} DELETE must terminate session
+
+  - type: session_list
+    severity: P1
+    description: /session GET must list all sessions
+
+  - type: project_create
+    severity: P0
+    description: /project POST must create new project
+
+  - type: project_list
+    severity: P1
+    description: /project GET must list all projects
+
+  - type: project_delete
+    severity: P0
+    description: /project/{id} DELETE must delete project
+
+  - type: message_interface
+    severity: P0
+    description: /message POST must accept and process messages
+
+  - type: command_interface
+    severity: P0
+    description: /command POST must accept and execute commands
+
+  - type: file_read
+    severity: P0
+    description: /file/read must return file contents
+
+  - type: file_write
+    severity: P0
+    description: /file/write must write file to disk
+
+  - type: file_delete
+    severity: P0
+    description: /file/delete must remove file from disk
+
+  - type: tool_discovery
+    severity: P1
+    description: /tools GET must list registered tools
+
+  - type: tool_registration
+    severity: P0
+    description: /tools/register POST must register new tool
+
+  - type: event_subscription
+    severity: P0
+    description: /events/subscribe must stream events
+
+event_types:
+  - session_created
+  - session_resumed
+  - session_terminated
+  - project_created
+  - project_deleted
+  - message_received
+  - command_executed
+  - tool_registered
+  - file_modified
+  - error_occurred
+
+verdict_rules:
+  all_endpoints_pass: Pass
+  any_endpoint_fail: Fail
+  auth_fails: Fail
+  missing_required: Fail
+  server_error: Error
+
+allowed_variance:
+  timing_ms:
+    min: 0
+    max: 2000
+  output_patterns: []
+
+severity_mapping:
+  server_startup_fail: Fail
+  auth_fail: Fail
+  missing_cors: Fail
+  session_ops_fail: Fail
+  project_ops_fail: Fail
+  file_ops_fail: Fail
+  tool_ops_fail: Warn
+  event_stream_fail: Fail
