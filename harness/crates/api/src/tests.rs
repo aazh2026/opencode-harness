@@ -21,7 +21,11 @@ mod tests {
 
         let result = client.create_session(Some(config)).await;
 
-        assert!(result.is_ok(), "Expected create_session to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected create_session to succeed, got: {:?}",
+            result
+        );
         let response = result.unwrap();
         assert!(
             !response.session_id.is_empty(),
@@ -47,7 +51,10 @@ mod tests {
 
         let result = client.create_session(Some(config)).await;
 
-        assert!(result.is_ok(), "Expected create_session to return Ok with 201 status");
+        assert!(
+            result.is_ok(),
+            "Expected create_session to return Ok with 201 status"
+        );
         let response = result.unwrap();
         assert!(
             chrono::DateTime::parse_from_rfc3339(&response.created_at.to_rfc3339()).is_ok(),
@@ -71,7 +78,7 @@ mod tests {
         let result = client.create_session(Some(invalid_config)).await;
 
         match result {
-            Err(ApiClientError::BadRequest(_)) => {},
+            Err(ApiClientError::BadRequest(_)) => {}
             other => panic!("Expected BadRequest error, got: {:?}", other),
         }
     }
@@ -83,7 +90,10 @@ mod tests {
 
         let result = client.create_session(None).await;
 
-        assert!(result.is_ok(), "Expected create_session without config to succeed");
+        assert!(
+            result.is_ok(),
+            "Expected create_session without config to succeed"
+        );
         let response = result.unwrap();
         assert!(!response.session_id.is_empty());
     }
@@ -99,14 +109,22 @@ mod tests {
         };
 
         let create_result = client.create_session(Some(config)).await;
-        assert!(create_result.is_ok(), "Session creation failed: {:?}", create_result);
+        assert!(
+            create_result.is_ok(),
+            "Session creation failed: {:?}",
+            create_result
+        );
         let session_id = create_result.unwrap().session_id;
 
         let get_result = client.get_session(&session_id).await;
         assert!(get_result.is_ok(), "Get session failed: {:?}", get_result);
 
         let delete_result = client.delete_session(&session_id).await;
-        assert!(delete_result.is_ok(), "Delete session failed: {:?}", delete_result);
+        assert!(
+            delete_result.is_ok(),
+            "Delete session failed: {:?}",
+            delete_result
+        );
     }
 
     #[tokio::test]
@@ -124,7 +142,11 @@ mod tests {
         let session_id = create_result.unwrap().session_id;
 
         let list_result = client.list_sessions().await;
-        assert!(list_result.is_ok(), "List sessions failed: {:?}", list_result);
+        assert!(
+            list_result.is_ok(),
+            "List sessions failed: {:?}",
+            list_result
+        );
         let sessions = list_result.unwrap();
 
         assert!(
@@ -145,7 +167,7 @@ mod tests {
         let result = client.get_session("nonexistent-session-id").await;
 
         match result {
-            Err(ApiClientError::NotFound) => {},
+            Err(ApiClientError::NotFound) => {}
             other => panic!("Expected NotFound error, got: {:?}", other),
         }
     }
@@ -158,7 +180,7 @@ mod tests {
         let result = client.delete_session("nonexistent-session-id").await;
 
         match result {
-            Err(ApiClientError::NotFound) => {},
+            Err(ApiClientError::NotFound) => {}
             other => panic!("Expected NotFound error, got: {:?}", other),
         }
     }
@@ -200,11 +222,19 @@ mod tests {
         };
 
         let create_result = client.create_session(Some(config)).await;
-        assert!(create_result.is_ok(), "Session creation failed: {:?}", create_result);
+        assert!(
+            create_result.is_ok(),
+            "Session creation failed: {:?}",
+            create_result
+        );
         let session_id = create_result.unwrap().session_id;
 
         let resume_result = client.resume_session(&session_id).await;
-        assert!(resume_result.is_ok(), "Resume session failed: {:?}", resume_result);
+        assert!(
+            resume_result.is_ok(),
+            "Resume session failed: {:?}",
+            resume_result
+        );
         let resumed_session = resume_result.unwrap();
 
         assert_eq!(
@@ -212,10 +242,7 @@ mod tests {
             "Expected session_id to match, got: {}, expected: {}",
             resumed_session.session_id, session_id
         );
-        assert!(
-            resumed_session.resumed,
-            "Expected resumed flag to be true"
-        );
+        assert!(resumed_session.resumed, "Expected resumed flag to be true");
 
         let _ = client.delete_session(&session_id).await;
     }
@@ -231,11 +258,18 @@ mod tests {
         };
 
         let create_result = client.create_session(Some(config)).await;
-        assert!(create_result.is_ok(), "Session creation failed: {:?}", create_result);
+        assert!(
+            create_result.is_ok(),
+            "Session creation failed: {:?}",
+            create_result
+        );
         let session_id = create_result.unwrap().session_id;
 
         let resume_result = client.resume_session(&session_id).await;
-        assert!(resume_result.is_ok(), "Expected resume to succeed for existing session");
+        assert!(
+            resume_result.is_ok(),
+            "Expected resume to succeed for existing session"
+        );
 
         let _ = client.delete_session(&session_id).await;
     }
@@ -248,8 +282,11 @@ mod tests {
         let result = client.resume_session("nonexistent-session-id").await;
 
         match result {
-            Err(ApiClientError::NotFound) => {},
-            other => panic!("Expected NotFound error for nonexistent session, got: {:?}", other),
+            Err(ApiClientError::NotFound) => {}
+            other => panic!(
+                "Expected NotFound error for nonexistent session, got: {:?}",
+                other
+            ),
         }
     }
 
@@ -271,106 +308,133 @@ mod tests {
 
         let resume_result = client.resume_session(&session_id).await;
         match resume_result {
-            Err(ApiClientError::Gone) | Err(ApiClientError::NotFound) => {},
-            other => panic!("Expected Gone or NotFound error for expired session, got: {:?}", other),
+            Err(ApiClientError::Gone) | Err(ApiClientError::NotFound) => {}
+            other => panic!(
+                "Expected Gone or NotFound error for expired session, got: {:?}",
+                other
+            ),
         }
     }
 }
 
 #[cfg(test)]
-    pub mod integration_tests {
-        use crate::client::ApiClient;
-        use crate::types::SessionConfig;
+pub mod integration_tests {
+    use crate::client::ApiClient;
+    use crate::types::SessionConfig;
 
-        const TEST_BASE_URL: &str = "http://localhost:8080";
+    const TEST_BASE_URL: &str = "http://localhost:8080";
 
-        fn create_test_client() -> ApiClient {
-            ApiClient::new(TEST_BASE_URL)
+    fn create_test_client() -> ApiClient {
+        ApiClient::new(TEST_BASE_URL)
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_008_send_message_returns_response() {
+        let client = create_test_client();
+
+        let config = SessionConfig {
+            project_id: Some("test-project".to_string()),
+            metadata: None,
+        };
+
+        let create_result = client.create_session(Some(config)).await;
+        assert!(
+            create_result.is_ok(),
+            "Session creation failed: {:?}",
+            create_result
+        );
+        let session_id = create_result.unwrap().session_id;
+
+        let result = client
+            .send_message(&session_id, "Hello, world!", None)
+            .await;
+        assert!(
+            result.is_ok(),
+            "Expected send_message to succeed, got: {:?}",
+            result
+        );
+        let response = result.unwrap();
+        assert!(
+            !response.message_id.is_empty(),
+            "Expected non-empty message_id"
+        );
+        assert!(!response.response.is_empty(), "Expected non-empty response");
+
+        let _ = client.delete_session(&session_id).await;
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_008_send_message_with_context_returns_response() {
+        let client = create_test_client();
+
+        let config = SessionConfig {
+            project_id: Some("test-project".to_string()),
+            metadata: None,
+        };
+
+        let create_result = client.create_session(Some(config)).await;
+        assert!(create_result.is_ok());
+        let session_id = create_result.unwrap().session_id;
+
+        let context = serde_json::json!({"key": "value"});
+        let result = client
+            .send_message(&session_id, "Hello with context!", Some(context))
+            .await;
+        assert!(
+            result.is_ok(),
+            "Expected send_message with context to succeed, got: {:?}",
+            result
+        );
+        let response = result.unwrap();
+        assert!(!response.message_id.is_empty());
+        assert!(!response.response.is_empty());
+
+        let _ = client.delete_session(&session_id).await;
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_008_send_message_to_nonexistent_session_returns_404() {
+        let client = create_test_client();
+
+        let result = client
+            .send_message("nonexistent-session-id", "Hello!", None)
+            .await;
+
+        match result {
+            Err(crate::client::ApiClientError::NotFound) => {}
+            other => panic!("Expected NotFound error, got: {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_008_send_empty_message_returns_400() {
+        let client = create_test_client();
+
+        let config = SessionConfig {
+            project_id: Some("test-project".to_string()),
+            metadata: None,
+        };
+
+        let create_result = client.create_session(Some(config)).await;
+        assert!(create_result.is_ok());
+        let session_id = create_result.unwrap().session_id;
+
+        let result = client.send_message(&session_id, "", None).await;
+
+        match result {
+            Err(crate::client::ApiClientError::BadRequest(_)) => {}
+            other => panic!(
+                "Expected BadRequest error for empty message, got: {:?}",
+                other
+            ),
         }
 
-        #[tokio::test]
-        #[ignore = "requires running API server"]
-        async fn smoke_api_008_send_message_returns_response() {
-            let client = create_test_client();
-
-            let config = SessionConfig {
-                project_id: Some("test-project".to_string()),
-                metadata: None,
-            };
-
-            let create_result = client.create_session(Some(config)).await;
-            assert!(create_result.is_ok(), "Session creation failed: {:?}", create_result);
-            let session_id = create_result.unwrap().session_id;
-
-            let result = client.send_message(&session_id, "Hello, world!", None).await;
-            assert!(result.is_ok(), "Expected send_message to succeed, got: {:?}", result);
-            let response = result.unwrap();
-            assert!(!response.message_id.is_empty(), "Expected non-empty message_id");
-            assert!(!response.response.is_empty(), "Expected non-empty response");
-
-            let _ = client.delete_session(&session_id).await;
-        }
-
-        #[tokio::test]
-        #[ignore = "requires running API server"]
-        async fn smoke_api_008_send_message_with_context_returns_response() {
-            let client = create_test_client();
-
-            let config = SessionConfig {
-                project_id: Some("test-project".to_string()),
-                metadata: None,
-            };
-
-            let create_result = client.create_session(Some(config)).await;
-            assert!(create_result.is_ok());
-            let session_id = create_result.unwrap().session_id;
-
-            let context = serde_json::json!({"key": "value"});
-            let result = client.send_message(&session_id, "Hello with context!", Some(context)).await;
-            assert!(result.is_ok(), "Expected send_message with context to succeed, got: {:?}", result);
-            let response = result.unwrap();
-            assert!(!response.message_id.is_empty());
-            assert!(!response.response.is_empty());
-
-            let _ = client.delete_session(&session_id).await;
-        }
-
-        #[tokio::test]
-        #[ignore = "requires running API server"]
-        async fn smoke_api_008_send_message_to_nonexistent_session_returns_404() {
-            let client = create_test_client();
-
-            let result = client.send_message("nonexistent-session-id", "Hello!", None).await;
-
-            match result {
-                Err(crate::client::ApiClientError::NotFound) => {},
-                other => panic!("Expected NotFound error, got: {:?}", other),
-            }
-        }
-
-        #[tokio::test]
-        #[ignore = "requires running API server"]
-        async fn smoke_api_008_send_empty_message_returns_400() {
-            let client = create_test_client();
-
-            let config = SessionConfig {
-                project_id: Some("test-project".to_string()),
-                metadata: None,
-            };
-
-            let create_result = client.create_session(Some(config)).await;
-            assert!(create_result.is_ok());
-            let session_id = create_result.unwrap().session_id;
-
-            let result = client.send_message(&session_id, "", None).await;
-
-            match result {
-                Err(crate::client::ApiClientError::BadRequest(_)) => {},
-                other => panic!("Expected BadRequest error for empty message, got: {:?}", other),
-            }
-
-            let _ = client.delete_session(&session_id).await;
-        }
+        let _ = client.delete_session(&session_id).await;
+    }
 
     #[tokio::test]
     #[ignore = "requires running API server"]
@@ -379,7 +443,11 @@ mod tests {
 
         let result = client.list_projects().await;
 
-        assert!(result.is_ok(), "Expected list_projects to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected list_projects to succeed, got: {:?}",
+            result
+        );
         let projects = result.unwrap();
         assert!(
             projects.iter().all(|p| !p.id.is_empty()),
@@ -394,7 +462,11 @@ mod tests {
 
         let result = client.list_projects().await;
 
-        assert!(result.is_ok(), "Expected list_projects to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected list_projects to succeed, got: {:?}",
+            result
+        );
         let projects = result.unwrap();
 
         for project in &projects {
@@ -428,12 +500,17 @@ mod tests {
 
         let result = client.list_projects().await;
 
-        assert!(result.is_ok(), "Expected list_projects to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected list_projects to succeed, got: {:?}",
+            result
+        );
         let projects = result.unwrap();
         assert!(
-            projects.is_empty() || projects.iter().any(|p| {
-                p.id.is_empty() && p.name.is_empty() && p.path.is_empty()
-            }),
+            projects.is_empty()
+                || projects
+                    .iter()
+                    .any(|p| { p.id.is_empty() && p.name.is_empty() && p.path.is_empty() }),
             "Expected empty array or projects with empty fields when no projects exist"
         );
     }
@@ -461,7 +538,11 @@ mod smoke_api_010_tests {
 
         let result = client.list_tools().await;
 
-        assert!(result.is_ok(), "Expected list_tools to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected list_tools to succeed, got: {:?}",
+            result
+        );
         let tools = result.unwrap();
         assert!(
             tools.iter().all(|t| !t.name.is_empty()),
@@ -476,14 +557,15 @@ mod smoke_api_010_tests {
 
         let result = client.list_tools().await;
 
-        assert!(result.is_ok(), "Expected list_tools to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected list_tools to succeed, got: {:?}",
+            result
+        );
         let tools = result.unwrap();
 
         for tool in &tools {
-            assert!(
-                !tool.name.is_empty(),
-                "Expected tool name to be non-empty"
-            );
+            assert!(!tool.name.is_empty(), "Expected tool name to be non-empty");
         }
     }
 
@@ -500,7 +582,11 @@ mod smoke_api_010_tests {
         let first_tool_name = &tools[0].name;
         let get_result = client.get_tool(first_tool_name).await;
 
-        assert!(get_result.is_ok(), "Expected get_tool to succeed, got: {:?}", get_result);
+        assert!(
+            get_result.is_ok(),
+            "Expected get_tool to succeed, got: {:?}",
+            get_result
+        );
         let tool = get_result.unwrap();
         assert_eq!(
             tool.name, *first_tool_name,
@@ -517,7 +603,7 @@ mod smoke_api_010_tests {
         let result = client.get_tool("nonexistent-tool-name").await;
 
         match result {
-            Err(crate::client::ApiClientError::NotFound) => {},
+            Err(crate::client::ApiClientError::NotFound) => {}
             other => panic!("Expected NotFound error, got: {:?}", other),
         }
     }
@@ -529,7 +615,11 @@ mod smoke_api_010_tests {
 
         let result = client.list_tools().await;
 
-        assert!(result.is_ok(), "Expected list_tools to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected list_tools to succeed, got: {:?}",
+            result
+        );
         let tools = result.unwrap();
         assert!(
             tools.is_empty() || tools.iter().any(|t| t.name.is_empty()),
@@ -549,12 +639,13 @@ mod smoke_api_010_tests {
         if !tools.is_empty() {
             let tool = &tools[0];
             let get_result = client.get_tool(&tool.name).await;
-            assert!(get_result.is_ok(), "Expected get_tool to succeed for tool: {}", tool.name);
-            let detailed_tool = get_result.unwrap();
-            assert_eq!(
-                detailed_tool.name, tool.name,
-                "Expected tool name to match"
+            assert!(
+                get_result.is_ok(),
+                "Expected get_tool to succeed for tool: {}",
+                tool.name
             );
+            let detailed_tool = get_result.unwrap();
+            assert_eq!(detailed_tool.name, tool.name, "Expected tool name to match");
         }
     }
 }
@@ -576,7 +667,11 @@ mod smoke_api_009_tests {
 
         let result = client.subscribe_events(None).await;
 
-        assert!(result.is_ok(), "Expected subscribe_events to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected subscribe_events to succeed, got: {:?}",
+            result
+        );
         let subscription = result.unwrap();
         assert!(
             !subscription.subscription_id.is_empty(),
@@ -589,7 +684,9 @@ mod smoke_api_009_tests {
             subscription.subscription_id
         );
 
-        let _ = client.delete_subscription(&subscription.subscription_id).await;
+        let _ = client
+            .delete_subscription(&subscription.subscription_id)
+            .await;
     }
 
     #[tokio::test]
@@ -597,10 +694,17 @@ mod smoke_api_009_tests {
     async fn smoke_api_009_subscribe_with_event_types_returns_subscription_id() {
         let client = create_test_client();
 
-        let event_types = vec!["session.created".to_string(), "message.received".to_string()];
+        let event_types = vec![
+            "session.created".to_string(),
+            "message.received".to_string(),
+        ];
         let result = client.subscribe_events(Some(event_types.clone())).await;
 
-        assert!(result.is_ok(), "Expected subscribe_events with event_types to succeed, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected subscribe_events with event_types to succeed, got: {:?}",
+            result
+        );
         let subscription = result.unwrap();
         assert!(
             !subscription.subscription_id.is_empty(),
@@ -619,7 +723,9 @@ mod smoke_api_009_tests {
             returned_types
         );
 
-        let _ = client.delete_subscription(&subscription.subscription_id).await;
+        let _ = client
+            .delete_subscription(&subscription.subscription_id)
+            .await;
     }
 
     #[tokio::test]
@@ -628,11 +734,19 @@ mod smoke_api_009_tests {
         let client = create_test_client();
 
         let subscribe_result = client.subscribe_events(None).await;
-        assert!(subscribe_result.is_ok(), "Subscription creation failed: {:?}", subscribe_result);
+        assert!(
+            subscribe_result.is_ok(),
+            "Subscription creation failed: {:?}",
+            subscribe_result
+        );
         let subscription_id = subscribe_result.unwrap().subscription_id;
 
         let events_result = client.get_events(&subscription_id).await;
-        assert!(events_result.is_ok(), "Expected get_events to succeed, got: {:?}", events_result);
+        assert!(
+            events_result.is_ok(),
+            "Expected get_events to succeed, got: {:?}",
+            events_result
+        );
         let events = events_result.unwrap();
         assert!(
             events.iter().all(|e| !e.event_type.is_empty()),
@@ -651,8 +765,11 @@ mod smoke_api_009_tests {
         let result = client.subscribe_events(Some(invalid_event_types)).await;
 
         match result {
-            Err(crate::client::ApiClientError::BadRequest(_)) => {},
-            other => panic!("Expected BadRequest error for invalid event_types, got: {:?}", other),
+            Err(crate::client::ApiClientError::BadRequest(_)) => {}
+            other => panic!(
+                "Expected BadRequest error for invalid event_types, got: {:?}",
+                other
+            ),
         }
     }
 
@@ -662,14 +779,22 @@ mod smoke_api_009_tests {
         let client = create_test_client();
 
         let subscribe_result = client.subscribe_events(None).await;
-        assert!(subscribe_result.is_ok(), "Subscription creation failed: {:?}", subscribe_result);
+        assert!(
+            subscribe_result.is_ok(),
+            "Subscription creation failed: {:?}",
+            subscribe_result
+        );
         let subscription_id = subscribe_result.unwrap().subscription_id;
 
         let get_result = client.get_events(&subscription_id).await;
         assert!(get_result.is_ok(), "Get events failed: {:?}", get_result);
 
         let delete_result = client.delete_subscription(&subscription_id).await;
-        assert!(delete_result.is_ok(), "Delete subscription failed: {:?}", delete_result);
+        assert!(
+            delete_result.is_ok(),
+            "Delete subscription failed: {:?}",
+            delete_result
+        );
     }
 
     #[tokio::test]
@@ -680,7 +805,7 @@ mod smoke_api_009_tests {
         let result = client.get_events("nonexistent-subscription-id").await;
 
         match result {
-            Err(crate::client::ApiClientError::NotFound) => {},
+            Err(crate::client::ApiClientError::NotFound) => {}
             other => panic!("Expected NotFound error, got: {:?}", other),
         }
     }
@@ -690,10 +815,12 @@ mod smoke_api_009_tests {
     async fn smoke_api_009_delete_nonexistent_subscription_returns_404() {
         let client = create_test_client();
 
-        let result = client.delete_subscription("nonexistent-subscription-id").await;
+        let result = client
+            .delete_subscription("nonexistent-subscription-id")
+            .await;
 
         match result {
-            Err(crate::client::ApiClientError::NotFound) => {},
+            Err(crate::client::ApiClientError::NotFound) => {}
             other => panic!("Expected NotFound error, got: {:?}", other),
         }
     }
@@ -718,6 +845,8 @@ mod smoke_api_009_tests {
             now
         );
 
-        let _ = client.delete_subscription(&subscription.subscription_id).await;
+        let _ = client
+            .delete_subscription(&subscription.subscription_id)
+            .await;
     }
 }

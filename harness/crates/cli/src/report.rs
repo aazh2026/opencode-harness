@@ -1,6 +1,6 @@
 use opencode_core::reporting::gate::{CIGate, GateConfig};
-use opencode_core::reporting::report::{ParityReport, TaskResult};
 use opencode_core::reporting::renderer::{FileRenderer, JUnitXmlRenderer};
+use opencode_core::reporting::report::{ParityReport, TaskResult};
 use opencode_core::types::parity_verdict::{DiffCategory, ParityVerdict};
 use serde::{Deserialize, Serialize};
 
@@ -137,7 +137,9 @@ impl ReportCommand {
     fn execute_junit() -> Result<(), ReportError> {
         let report = Self::load_latest_report()?;
         let renderer = JUnitXmlRenderer::new();
-        let xml = renderer.render_report(&report).map_err(ReportError::XmlRendering)?;
+        let xml = renderer
+            .render_report(&report)
+            .map_err(ReportError::XmlRendering)?;
         println!("{}", xml);
         Ok(())
     }
@@ -156,7 +158,9 @@ impl ReportCommand {
 
 #[derive(Debug)]
 pub enum ReportError {
-    InvalidFormat { format: String },
+    InvalidFormat {
+        format: String,
+    },
     JsonSerialization(serde_json::Error),
     XmlRendering(std::fmt::Error),
     #[allow(dead_code)]
@@ -167,7 +171,11 @@ impl std::fmt::Display for ReportError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ReportError::InvalidFormat { format } => {
-                write!(f, "Invalid output format: '{}'. Use json, junit, or md.", format)
+                write!(
+                    f,
+                    "Invalid output format: '{}'. Use json, junit, or md.",
+                    format
+                )
             }
             ReportError::JsonSerialization(e) => {
                 write!(f, "JSON serialization error: {}", e)
@@ -176,7 +184,10 @@ impl std::fmt::Display for ReportError {
                 write!(f, "XML rendering error: {}", e)
             }
             ReportError::NoDataAvailable => {
-                write!(f, "No report data available. Run tasks first to generate a report.")
+                write!(
+                    f,
+                    "No report data available. Run tasks first to generate a report."
+                )
             }
         }
     }

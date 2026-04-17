@@ -1,4 +1,6 @@
-use opencode_api::types::{ResumeSessionResponse, Session, SessionConfig, SessionStatus, WorkspaceState};
+use opencode_api::types::{
+    ResumeSessionResponse, Session, SessionConfig, SessionStatus, WorkspaceState,
+};
 
 #[derive(Debug, Clone)]
 pub struct PartialOperation {
@@ -42,7 +44,8 @@ pub fn partial_operation_state_handled_correctly_on_recovery() {
         "Session with partial operation state should be resumable"
     );
     assert_eq!(
-        resume_response.status, SessionStatus::Active,
+        resume_response.status,
+        SessionStatus::Active,
         "Session should be Active after recovery"
     );
     assert!(
@@ -56,7 +59,6 @@ pub fn partial_operation_state_handled_correctly_on_recovery() {
         "Workspace should contain at least the files written before interruption"
     );
 }
-
 
 pub fn error_handling_test_prolonged_disconnection() {
     let _session_config = SessionConfig {
@@ -85,7 +87,8 @@ pub fn error_handling_test_prolonged_disconnection() {
         "Session should not resume after being terminated"
     );
     assert_eq!(
-        resume_response.status, SessionStatus::Terminated,
+        resume_response.status,
+        SessionStatus::Terminated,
         "Session status should be Terminated after error"
     );
 }

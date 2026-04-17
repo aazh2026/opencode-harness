@@ -58,8 +58,7 @@ timeout:
             "config.yaml",
         );
 
-        let config =
-            AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
+        let config = AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
 
         assert!(
             (config.gate_thresholds.pr_pass_rate - 0.85).abs() < 0.01,
@@ -95,8 +94,7 @@ timeout:
             "config.yaml",
         );
 
-        let app_config =
-            AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
+        let app_config = AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
         let gate_config = GateConfig::from_app_config(GateLevel::PR, &app_config);
 
         assert!(
@@ -137,8 +135,7 @@ timeout:
             "config.yaml",
         );
 
-        let app_config =
-            AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
+        let app_config = AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
         let gate_config = GateConfig::from_app_config(GateLevel::PR, &app_config);
 
         let report = create_pass_report(8, 2);
@@ -170,8 +167,7 @@ timeout:
             "config.yaml",
         );
 
-        let app_config =
-            AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
+        let app_config = AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
         let gate_config = GateConfig::from_app_config(GateLevel::PR, &app_config);
 
         let report = create_pass_report(8, 2);
@@ -207,8 +203,7 @@ timeout:
             "config.yaml",
         );
 
-        let config =
-            AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
+        let config = AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
 
         assert_eq!(
             config.timeout.default_timeout_seconds, 500,
@@ -234,8 +229,7 @@ gate_thresholds:
             "partial.yaml",
         );
 
-        let config =
-            AppConfig::load_from_file(&temp_dir.path().join("partial.yaml")).unwrap();
+        let config = AppConfig::load_from_file(&temp_dir.path().join("partial.yaml")).unwrap();
 
         assert_eq!(
             config.timeout.default_timeout_seconds, 300,
@@ -344,10 +338,8 @@ mod malformed_config_tests {
 
     #[test]
     fn test_handles_malformed_yaml_config_gracefully() {
-        let temp_dir = create_test_config_file(
-            "invalid: yaml: content: [\n  incomplete",
-            "malformed.yaml",
-        );
+        let temp_dir =
+            create_test_config_file("invalid: yaml: content: [\n  incomplete", "malformed.yaml");
 
         let result = AppConfig::load_from_file(&temp_dir.path().join("malformed.yaml"));
         assert!(
@@ -358,10 +350,7 @@ mod malformed_config_tests {
 
     #[test]
     fn test_handles_malformed_json_config_gracefully() {
-        let temp_dir = create_test_config_file(
-            "{ invalid json }",
-            "malformed.json",
-        );
+        let temp_dir = create_test_config_file("{ invalid json }", "malformed.json");
 
         let result = AppConfig::load_from_file(&temp_dir.path().join("malformed.json"));
         assert!(
@@ -401,10 +390,7 @@ gate_thresholds:
         );
 
         let result = AppConfig::load_from_file(&temp_dir.path().join("partial.yaml"));
-        assert!(
-            result.is_ok(),
-            "Partial config should load successfully"
-        );
+        assert!(result.is_ok(), "Partial config should load successfully");
 
         let config = result.unwrap();
         assert!(
@@ -441,8 +427,7 @@ timeout:
             "config.yaml",
         );
 
-        let config =
-            AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
+        let config = AppConfig::load_from_file(&temp_dir.path().join("config.yaml")).unwrap();
 
         assert!(
             (config.gate_thresholds.pr_pass_rate - 0.88).abs() < 0.01,
@@ -472,8 +457,7 @@ timeout:
             "config.json",
         );
 
-        let config =
-            AppConfig::load_from_file(&temp_dir.path().join("config.json")).unwrap();
+        let config = AppConfig::load_from_file(&temp_dir.path().join("config.json")).unwrap();
 
         assert!(
             (config.gate_thresholds.pr_pass_rate - 0.87).abs() < 0.01,
@@ -505,8 +489,7 @@ timeout:
             "config.yml",
         );
 
-        let config =
-            AppConfig::load_from_file(&temp_dir.path().join("config.yml")).unwrap();
+        let config = AppConfig::load_from_file(&temp_dir.path().join("config.yml")).unwrap();
 
         assert!(
             (config.gate_thresholds.pr_pass_rate - 0.86).abs() < 0.01,

@@ -54,7 +54,8 @@ pub fn interrupted_file_write_resumes_correctly() {
         "Resumed operation should not be marked as interrupted"
     );
     assert_eq!(
-        resumed.operation_type, OperationType::FileWrite,
+        resumed.operation_type,
+        OperationType::FileWrite,
         "Operation type should be preserved"
     );
 }
@@ -141,7 +142,10 @@ pub fn client_reconnects_automatically_after_server_restart() {
         }),
     };
 
-    assert!(resume_response.resumed, "Client should reconnect after restart");
+    assert!(
+        resume_response.resumed,
+        "Client should reconnect after restart"
+    );
     assert_eq!(resume_response.status, SessionStatus::Active);
 }
 
@@ -214,7 +218,8 @@ pub fn session_reconnect_after_connection_interruption() {
         "Session should be marked as resumed after reconnection"
     );
     assert_eq!(
-        resume_response.status, SessionStatus::Active,
+        resume_response.status,
+        SessionStatus::Active,
         "Session should be Active after reconnection"
     );
     assert!(
@@ -257,7 +262,11 @@ pub fn session_state_preserved_during_reconnection() {
         "Working directory should be preserved"
     );
     assert_eq!(
-        preserved_workspace.files.as_ref().map(|f| f.len()).unwrap_or(0),
+        preserved_workspace
+            .files
+            .as_ref()
+            .map(|f| f.len())
+            .unwrap_or(0),
         3,
         "All files should be preserved in workspace state"
     );
@@ -293,7 +302,8 @@ pub fn session_handles_prolonged_disconnection() {
         "Session should not be immediately resumed after prolonged disconnection"
     );
     assert_eq!(
-        resume_response.status, SessionStatus::WaitingApproval,
+        resume_response.status,
+        SessionStatus::WaitingApproval,
         "Session should be in WaitingApproval state after prolonged disconnection"
     );
 }

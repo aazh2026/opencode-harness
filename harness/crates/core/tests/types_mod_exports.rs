@@ -2,9 +2,9 @@ use opencode_core::types::{
     AgentMode, AllowedVariance, AssertionType, ConfigFormat, DefaultEnvironmentProbe, EntryMode,
     EnvironmentInfo, EnvironmentProbe, ExecutionPolicy, FailureClassification, FixtureConfig,
     FixtureFile, FixtureProject, FixtureWorkspace, OnMissingDependency, PathConvention,
-    ProviderMode, SimpleReport, ResetStrategy, Severity, Task, TaskCategory, TaskInput, TaskOutputs,
-    TaskStatus, TestCase, TestCaseStatus, TimingVariance, Transcript, TranscriptType, Workspace,
-    WorkspacePolicy,
+    ProviderMode, ResetStrategy, Severity, SimpleReport, Task, TaskCategory, TaskInput,
+    TaskOutputs, TaskStatus, TestCase, TestCaseStatus, TimingVariance, Transcript, TranscriptType,
+    Workspace, WorkspacePolicy,
 };
 
 #[test]

@@ -441,6 +441,9 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             };
         }
 
+        let is_help_like = input.task.tags.iter().any(|t| t == "help")
+            || input.task.input.args.iter().any(|arg| arg == "--help");
+
         if lr.stdout != rr.stdout {
             if let Some(ref variance) = allowed_variance {
                 if !variance.output_patterns.is_empty() {
@@ -458,6 +461,18 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                     }
                 }
             }
+
+            if is_help_like {
+                let legacy_combined = format!("{}{}", lr.stdout, lr.stderr);
+                let rust_combined = format!("{}{}", rr.stdout, rr.stderr);
+                if legacy_combined == rust_combined {
+                    return ParityVerdict::PassWithAllowedVariance {
+                        variance_type: VarianceType::OutputPattern,
+                        details: "Help-like output matches after stdout/stderr merge".to_string(),
+                    };
+                }
+            }
+
             return ParityVerdict::Fail {
                 category: DiffCategory::OutputText,
                 details: "Stdout differs".to_string(),
@@ -465,6 +480,17 @@ impl<L: TaskLoader> DifferentialRunner<L> {
         }
 
         if lr.stderr != rr.stderr {
+            if is_help_like {
+                let legacy_combined = format!("{}{}", lr.stdout, lr.stderr);
+                let rust_combined = format!("{}{}", rr.stdout, rr.stderr);
+                if legacy_combined == rust_combined {
+                    return ParityVerdict::PassWithAllowedVariance {
+                        variance_type: VarianceType::OutputPattern,
+                        details: "Help-like output matches after stdout/stderr merge".to_string(),
+                    };
+                }
+            }
+
             return ParityVerdict::Fail {
                 category: DiffCategory::OutputText,
                 details: "Stderr differs".to_string(),

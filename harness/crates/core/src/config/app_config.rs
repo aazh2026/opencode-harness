@@ -150,9 +150,7 @@ impl AppConfig {
 
     pub fn load_from_file(path: &PathBuf) -> Result<AppConfig> {
         if !path.exists() {
-            return Err(AppConfigError::NotFound {
-                path: path.clone(),
-            });
+            return Err(AppConfigError::NotFound { path: path.clone() });
         }
 
         let content = std::fs::read_to_string(path)?;

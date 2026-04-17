@@ -52,17 +52,11 @@ impl ApiClient {
 
         let status = response.status();
         if status.is_success() {
-            let session: Session = response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)?;
+            let session: Session = response.json().await.map_err(ApiClientError::Response)?;
             Ok(CreateSessionResponse::from(session))
         } else if status.as_u16() == 400 {
             Err(ApiClientError::BadRequest(
-                response
-                    .json()
-                    .await
-                    .map_err(ApiClientError::Response)?,
+                response.json().await.map_err(ApiClientError::Response)?,
             ))
         } else if status.as_u16() == 401 {
             Err(ApiClientError::Unauthorized)
@@ -71,10 +65,7 @@ impl ApiClient {
         }
     }
 
-    pub async fn get_session(
-        &self,
-        session_id: &str,
-    ) -> Result<Session, ApiClientError> {
+    pub async fn get_session(&self, session_id: &str) -> Result<Session, ApiClientError> {
         let url = format!("{}/session/{}", self.base_url, session_id);
         let mut request = self.client.get(&url);
 
@@ -82,17 +73,11 @@ impl ApiClient {
             request = request.bearer_auth(token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(ApiClientError::Request)?;
+        let response = request.send().await.map_err(ApiClientError::Request)?;
 
         let status = response.status();
         if status.is_success() {
-            response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)
+            response.json().await.map_err(ApiClientError::Response)
         } else if status.as_u16() == 404 {
             Err(ApiClientError::NotFound)
         } else if status.as_u16() == 401 {
@@ -110,19 +95,16 @@ impl ApiClient {
             request = request.bearer_auth(token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(ApiClientError::Request)?;
+        let response = request.send().await.map_err(ApiClientError::Request)?;
 
         let status = response.status();
         if status.is_success() {
             #[derive(Deserialize)]
-            struct SessionsResponse { sessions: Vec<Session> }
-            let result: SessionsResponse = response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)?;
+            struct SessionsResponse {
+                sessions: Vec<Session>,
+            }
+            let result: SessionsResponse =
+                response.json().await.map_err(ApiClientError::Response)?;
             Ok(result.sessions)
         } else if status.as_u16() == 401 {
             Err(ApiClientError::Unauthorized)
@@ -139,10 +121,7 @@ impl ApiClient {
             request = request.bearer_auth(token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(ApiClientError::Request)?;
+        let response = request.send().await.map_err(ApiClientError::Request)?;
 
         let status = response.status();
         if status.is_success() || status.as_u16() == 204 {
@@ -167,17 +146,11 @@ impl ApiClient {
             request = request.bearer_auth(token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(ApiClientError::Request)?;
+        let response = request.send().await.map_err(ApiClientError::Request)?;
 
         let status = response.status();
         if status.is_success() {
-            response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)
+            response.json().await.map_err(ApiClientError::Response)
         } else if status.as_u16() == 404 {
             Err(ApiClientError::NotFound)
         } else if status.as_u16() == 401 {
@@ -197,19 +170,16 @@ impl ApiClient {
             request = request.bearer_auth(token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(ApiClientError::Request)?;
+        let response = request.send().await.map_err(ApiClientError::Request)?;
 
         let status = response.status();
         if status.is_success() {
             #[derive(Deserialize)]
-            struct ProjectsResponse { projects: Vec<Project> }
-            let result: ProjectsResponse = response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)?;
+            struct ProjectsResponse {
+                projects: Vec<Project>,
+            }
+            let result: ProjectsResponse =
+                response.json().await.map_err(ApiClientError::Response)?;
             Ok(result.projects)
         } else if status.as_u16() == 401 {
             Err(ApiClientError::Unauthorized)
@@ -244,16 +214,10 @@ impl ApiClient {
 
         let status = response.status();
         if status.is_success() {
-            response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)
+            response.json().await.map_err(ApiClientError::Response)
         } else if status.as_u16() == 400 {
             Err(ApiClientError::BadRequest(
-                response
-                    .json()
-                    .await
-                    .map_err(ApiClientError::Response)?,
+                response.json().await.map_err(ApiClientError::Response)?,
             ))
         } else if status.as_u16() == 404 {
             Err(ApiClientError::NotFound)
@@ -285,16 +249,10 @@ impl ApiClient {
 
         let status = response.status();
         if status.is_success() {
-            response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)
+            response.json().await.map_err(ApiClientError::Response)
         } else if status.as_u16() == 400 {
             Err(ApiClientError::BadRequest(
-                response
-                    .json()
-                    .await
-                    .map_err(ApiClientError::Response)?,
+                response.json().await.map_err(ApiClientError::Response)?,
             ))
         } else if status.as_u16() == 401 {
             Err(ApiClientError::Unauthorized)
@@ -303,10 +261,7 @@ impl ApiClient {
         }
     }
 
-    pub async fn get_events(
-        &self,
-        subscription_id: &str,
-    ) -> Result<Vec<Event>, ApiClientError> {
+    pub async fn get_events(&self, subscription_id: &str) -> Result<Vec<Event>, ApiClientError> {
         let url = format!("{}/events/{}", self.base_url, subscription_id);
         let mut request = self.client.get(&url);
 
@@ -314,26 +269,19 @@ impl ApiClient {
             request = request.bearer_auth(token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(ApiClientError::Request)?;
+        let response = request.send().await.map_err(ApiClientError::Request)?;
 
         let status = response.status();
         if status.is_success() {
             #[derive(Deserialize)]
-            struct EventsResponse { events: Vec<Event> }
-            let result: EventsResponse = response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)?;
+            struct EventsResponse {
+                events: Vec<Event>,
+            }
+            let result: EventsResponse = response.json().await.map_err(ApiClientError::Response)?;
             Ok(result.events)
         } else if status.as_u16() == 400 {
             Err(ApiClientError::BadRequest(
-                response
-                    .json()
-                    .await
-                    .map_err(ApiClientError::Response)?,
+                response.json().await.map_err(ApiClientError::Response)?,
             ))
         } else if status.as_u16() == 404 {
             Err(ApiClientError::NotFound)
@@ -344,10 +292,7 @@ impl ApiClient {
         }
     }
 
-    pub async fn delete_subscription(
-        &self,
-        subscription_id: &str,
-    ) -> Result<(), ApiClientError> {
+    pub async fn delete_subscription(&self, subscription_id: &str) -> Result<(), ApiClientError> {
         let url = format!("{}/events/subscribe/{}", self.base_url, subscription_id);
         let mut request = self.client.delete(&url);
 
@@ -355,10 +300,7 @@ impl ApiClient {
             request = request.bearer_auth(token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(ApiClientError::Request)?;
+        let response = request.send().await.map_err(ApiClientError::Request)?;
 
         let status = response.status();
         if status.is_success() || status.as_u16() == 204 {
@@ -380,19 +322,15 @@ impl ApiClient {
             request = request.bearer_auth(token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(ApiClientError::Request)?;
+        let response = request.send().await.map_err(ApiClientError::Request)?;
 
         let status = response.status();
         if status.is_success() {
             #[derive(Deserialize)]
-            struct ToolsResponse { tools: Vec<Tool> }
-            let result: ToolsResponse = response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)?;
+            struct ToolsResponse {
+                tools: Vec<Tool>,
+            }
+            let result: ToolsResponse = response.json().await.map_err(ApiClientError::Response)?;
             Ok(result.tools)
         } else if status.as_u16() == 401 {
             Err(ApiClientError::Unauthorized)
@@ -409,17 +347,11 @@ impl ApiClient {
             request = request.bearer_auth(token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(ApiClientError::Request)?;
+        let response = request.send().await.map_err(ApiClientError::Request)?;
 
         let status = response.status();
         if status.is_success() {
-            response
-                .json()
-                .await
-                .map_err(ApiClientError::Response)
+            response.json().await.map_err(ApiClientError::Response)
         } else if status.as_u16() == 404 {
             Err(ApiClientError::NotFound)
         } else if status.as_u16() == 401 {
