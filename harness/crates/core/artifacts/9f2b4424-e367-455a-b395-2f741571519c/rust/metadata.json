@@ -1,0 +1,12 @@
+{
+  "session_id": "9f2b4424-e367-455a-b395-2f741571519c",
+  "runner_name": "rust",
+  "task_id": "COMPARE-B",
+  "exit_code": 0,
+  "duration_ms": 1,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 9,
+  "stderr_size_bytes": 0,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:21:33.345142Z"
+}

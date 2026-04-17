@@ -1,0 +1,12 @@
+{
+  "session_id": "33c3ab4b-b488-4c30-ae57-0299a6c0c921",
+  "runner_name": "legacy",
+  "task_id": "MULTI-001",
+  "exit_code": 0,
+  "duration_ms": 1157,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 0,
+  "stderr_size_bytes": 106,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:21:33.242008Z"
+}

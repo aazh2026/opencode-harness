@@ -1,0 +1,12 @@
+{
+  "session_id": "a4d9904f-40b6-4885-8454-513c46d4ae4a",
+  "runner_name": "rust",
+  "task_id": "CLI-FIXTURE-001",
+  "exit_code": 0,
+  "duration_ms": 2,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 18,
+  "stderr_size_bytes": 0,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:21:32.536803Z"
+}

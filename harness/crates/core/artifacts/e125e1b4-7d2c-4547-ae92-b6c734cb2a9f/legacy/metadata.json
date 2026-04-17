@@ -1,0 +1,12 @@
+{
+  "session_id": "e125e1b4-7d2c-4547-ae92-b6c734cb2a9f",
+  "runner_name": "legacy",
+  "task_id": "TEST-001",
+  "exit_code": 0,
+  "duration_ms": 1419,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 0,
+  "stderr_size_bytes": 106,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:20:59.614304Z"
+}

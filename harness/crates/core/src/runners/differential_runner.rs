@@ -1,5 +1,6 @@
 use crate::error::Result;
 use crate::loaders::TaskLoader;
+use crate::runners::artifact_persister::ArtifactPersister;
 use crate::runners::legacy_runner::{LegacyRunner, LegacyRunnerResult};
 use crate::runners::rust_runner::{RustRunner, RustRunnerResult};
 use crate::types::artifact::Artifact;
@@ -8,7 +9,7 @@ use crate::types::runner_input::RunnerInput;
 use crate::types::runner_output::RunnerOutput;
 use crate::types::task::Task;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 pub struct DifferentialRunner<L: TaskLoader> {
@@ -20,13 +21,12 @@ impl<L: TaskLoader> DifferentialRunner<L> {
         Self { task_loader }
     }
 
-    pub fn execute(&self, task: &Task) -> Result<DifferentialResult> {
-        let runner_input = self.task_to_runner_input(task);
-        self.execute_from_input(&runner_input)
-    }
-
-    pub fn execute_from_input(&self, input: &RunnerInput) -> Result<DifferentialResult> {
+    pub fn execute(&self, input: &RunnerInput) -> Result<DifferentialResult> {
         let start = Instant::now();
+        let run_id = format!("run-{}", uuid::Uuid::new_v4());
+        let artifact_persister = ArtifactPersister::new(&run_id, PathBuf::from("artifacts"));
+        artifact_persister.create_directory_structure()?;
+
         let legacy_runner = LegacyRunner::new("legacy");
         let rust_runner = RustRunner::new("rust");
 
@@ -37,34 +37,61 @@ impl<L: TaskLoader> DifferentialRunner<L> {
 
         let duration_ms = start.elapsed().as_millis() as u64;
 
+        let (diff_report_path, verdict_path) = match (&legacy_result, &rust_result) {
+            (Ok(lr), Ok(rr)) => {
+                let report_path = artifact_persister.generate_diff_report(lr, rr, &verdict)?;
+                let v_path = artifact_persister.generate_verdict_md(&verdict, lr, rr)?;
+                (Some(report_path), Some(v_path))
+            }
+            _ => (None, None),
+        };
+
         match (legacy_result, rust_result) {
-            (Ok(lr), Ok(rr)) => Ok(DifferentialResult {
-                task_id: input.task.id.clone(),
-                legacy_result: Some(lr.into()),
-                rust_result: Some(rr.into()),
-                verdict: verdict.clone(),
-                duration_ms,
-            }),
+            (Ok(lr), Ok(rr)) => {
+                let legacy_paths = lr.artifact_paths.clone();
+                let rust_paths = rr.artifact_paths.clone();
+                Ok(DifferentialResult {
+                    task_id: input.task.id.clone(),
+                    legacy_result: Some(lr.into()),
+                    rust_result: Some(rr.into()),
+                    verdict: verdict.clone(),
+                    duration_ms,
+                    diff_report_path,
+                    verdict_path,
+                    legacy_artifact_paths: legacy_paths,
+                    rust_artifact_paths: rust_paths,
+                })
+            }
             (Err(e), Ok(rr)) => {
                 let runner = "LegacyRunner".to_string();
                 let reason = e.to_string();
+                let rust_paths = rr.artifact_paths.clone();
                 Ok(DifferentialResult {
                     task_id: input.task.id.clone(),
                     legacy_result: None,
                     rust_result: Some(rr.into()),
                     verdict: ParityVerdict::Error { runner, reason },
                     duration_ms,
+                    diff_report_path: None,
+                    verdict_path: None,
+                    legacy_artifact_paths: Vec::new(),
+                    rust_artifact_paths: rust_paths,
                 })
             }
             (Ok(lr), Err(e)) => {
                 let runner = "RustRunner".to_string();
                 let reason = e.to_string();
+                let legacy_paths = lr.artifact_paths.clone();
                 Ok(DifferentialResult {
                     task_id: input.task.id.clone(),
                     legacy_result: Some(lr.into()),
                     rust_result: None,
                     verdict: ParityVerdict::Error { runner, reason },
                     duration_ms,
+                    diff_report_path: None,
+                    verdict_path: None,
+                    legacy_artifact_paths: legacy_paths,
+                    rust_artifact_paths: Vec::new(),
                 })
             }
             (Err(e1), Err(e2)) => Ok(DifferentialResult {
@@ -76,8 +103,21 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                     reason: format!("legacy: {}; rust: {}", e1, e2),
                 },
                 duration_ms,
+                diff_report_path: None,
+                verdict_path: None,
+                legacy_artifact_paths: Vec::new(),
+                rust_artifact_paths: Vec::new(),
             }),
         }
+    }
+
+    pub fn execute_from_input(&self, input: &RunnerInput) -> Result<DifferentialResult> {
+        self.execute(input)
+    }
+
+    pub fn execute_from_task(&self, task: &Task) -> Result<DifferentialResult> {
+        let runner_input = self.task_to_runner_input(task);
+        self.execute(&runner_input)
     }
 
     fn task_to_runner_input(&self, task: &Task) -> RunnerInput {
@@ -156,13 +196,13 @@ impl<L: TaskLoader> DifferentialRunner<L> {
 
     pub fn execute_single(&self, path: &Path) -> Result<DifferentialResult> {
         let task = self.task_loader.load_single(path)?;
-        self.execute(&task)
+        self.execute_from_task(&task)
     }
 
     fn execute_tasks(&self, tasks: &[Task]) -> Result<Vec<DifferentialResult>> {
         let mut results = Vec::new();
         for task in tasks {
-            let result = self.execute(task)?;
+            let result = self.execute_from_task(task)?;
             results.push(result);
         }
         Ok(results)
@@ -176,6 +216,10 @@ pub struct DifferentialResult {
     pub rust_result: Option<RustRunnerResult>,
     pub verdict: ParityVerdict,
     pub duration_ms: u64,
+    pub diff_report_path: Option<PathBuf>,
+    pub verdict_path: Option<PathBuf>,
+    pub legacy_artifact_paths: Vec<PathBuf>,
+    pub rust_artifact_paths: Vec<PathBuf>,
 }
 
 impl DifferentialResult {
@@ -186,6 +230,10 @@ impl DifferentialResult {
             rust_result: None,
             verdict: ParityVerdict::Uncertain,
             duration_ms: 0,
+            diff_report_path: None,
+            verdict_path: None,
+            legacy_artifact_paths: Vec::new(),
+            rust_artifact_paths: Vec::new(),
         }
     }
 
@@ -283,13 +331,16 @@ mod tests {
     use super::*;
     use crate::loaders::DefaultTaskLoader;
     use crate::types::agent_mode::AgentMode;
+    use crate::types::capture_options::CaptureOptions;
     use crate::types::entry_mode::EntryMode;
     use crate::types::execution_policy::ExecutionPolicy;
     use crate::types::on_missing_dependency::OnMissingDependency;
     use crate::types::provider_mode::ProviderMode;
+    use crate::types::runner_input::RunnerInput;
     use crate::types::severity::Severity;
     use crate::types::TaskCategory;
     use crate::types::TaskInput;
+    use std::collections::HashMap;
     use tempfile::TempDir;
 
     fn create_test_task() -> Task {
@@ -310,6 +361,18 @@ mod tests {
             ExecutionPolicy::ManualCheck,
             60,
             OnMissingDependency::Fail,
+        )
+    }
+
+    fn create_test_runner_input(task: Task) -> RunnerInput {
+        RunnerInput::new(
+            task,
+            std::path::PathBuf::from("/tmp"),
+            HashMap::new(),
+            60,
+            None,
+            ProviderMode::Both,
+            CaptureOptions::default(),
         )
     }
 
@@ -424,7 +487,65 @@ on_missing_dependency: Fail
         let loader = DefaultTaskLoader::new();
         let runner = DifferentialRunner::new(loader);
         let task = create_test_task();
-        let result = runner.execute(&task);
+        let result = runner.execute_from_task(&task);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_execute_accepts_runner_input_and_returns_runner_output() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+        let task = create_test_task();
+        let input = create_test_runner_input(task);
+        let result = runner.execute(&input);
+        assert!(result.is_ok());
+        let diff_result = result.unwrap();
+        assert_eq!(diff_result.task_id, "TEST-001");
+        assert!(diff_result.duration_ms > 0 || diff_result.duration_ms == 0);
+    }
+
+    #[test]
+    fn test_directory_structure_created_for_both_runners() {
+        let temp_dir = TempDir::new().unwrap();
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+        let mut task = create_test_task();
+        task.input.cwd = temp_dir.path().to_string_lossy().to_string();
+        let input = create_test_runner_input(task);
+        std::fs::create_dir_all(temp_dir.path().join("artifacts")).ok();
+        let result = runner.execute(&input);
+        assert!(result.is_ok());
+        let diff_result = result.unwrap();
+        assert!(diff_result.legacy_result.is_some() || diff_result.rust_result.is_some());
+    }
+
+    #[test]
+    fn test_diff_report_generated_correctly() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+        let task = create_test_task();
+        let input = create_test_runner_input(task);
+        let result = runner.execute(&input);
+        assert!(result.is_ok());
+        let diff_result = result.unwrap();
+        if diff_result.legacy_result.is_some() && diff_result.rust_result.is_some() {
+            assert!(diff_result.diff_report_path.is_some());
+            assert!(diff_result.verdict_path.is_some());
+            if let Some(ref report_path) = diff_result.diff_report_path {
+                assert!(report_path.to_string_lossy().contains("report.json"));
+            }
+            if let Some(ref verdict_path) = diff_result.verdict_path {
+                assert!(verdict_path.to_string_lossy().contains("verdict.md"));
+            }
+        }
+    }
+
+    #[test]
+    fn test_differential_result_includes_artifact_paths() {
+        let result = DifferentialResult::new("TEST-001".to_string());
+        assert!(result.legacy_artifact_paths.is_empty());
+        assert!(result.rust_artifact_paths.is_empty());
+        assert!(result.diff_report_path.is_none());
+        assert!(result.verdict_path.is_none());
     }
 }

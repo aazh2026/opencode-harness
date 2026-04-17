@@ -1,0 +1,19 @@
+{
+  "run_id": "run-c4b23b5c-f7b5-47c0-a53c-6eeda56d6328",
+  "legacy_exit_code": 0,
+  "rust_exit_code": 0,
+  "legacy_duration_ms": 1483,
+  "rust_duration_ms": 2,
+  "verdict": "Different (OutputText)",
+  "verdict_category": "OutputText",
+  "legacy_stdout_size": 0,
+  "rust_stdout_size": 18,
+  "legacy_stderr_size": 118,
+  "rust_stderr_size": 0,
+  "artifacts_diff": {
+    "only_in_legacy": [],
+    "only_in_rust": [],
+    "in_both": []
+  },
+  "generated_at": "2026-04-17T00:21:32.537095Z"
+}

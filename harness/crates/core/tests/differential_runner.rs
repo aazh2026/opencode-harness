@@ -72,7 +72,7 @@ on_missing_dependency: Fail
     assert_eq!(loaded_task.id, "INTEGRATION-001");
     assert_eq!(loaded_task.category, TaskCategory::Integration);
 
-    let result = runner.execute(&loaded_task).unwrap();
+    let result = runner.execute_from_task(&loaded_task).unwrap();
     assert_eq!(result.task_id, "INTEGRATION-001");
     assert!(result.passed() || result.legacy_result.is_some() || result.rust_result.is_some());
 }
@@ -196,7 +196,7 @@ on_missing_dependency: Fail
     let loaded_task = runner.task_loader.load_single(&task_yaml).unwrap();
     assert_eq!(loaded_task.fixture_project, "fixtures/projects/cli-basic");
 
-    let result = runner.execute(&loaded_task).unwrap();
+    let result = runner.execute_from_task(&loaded_task).unwrap();
     assert!(result.passed() || result.legacy_result.is_some() || result.rust_result.is_some());
     drop(fixtures_path);
 }
@@ -293,6 +293,10 @@ fn test_differential_runner_differential_result_structure() {
     assert!(result.rust_result.is_none());
     assert!(result.passed() == false);
     assert_eq!(result.duration_ms, 0);
+    assert!(result.diff_report_path.is_none());
+    assert!(result.verdict_path.is_none());
+    assert!(result.legacy_artifact_paths.is_empty());
+    assert!(result.rust_artifact_paths.is_empty());
 }
 
 #[test]
@@ -319,7 +323,7 @@ fn test_differential_runner_with_task_struct_directly() {
         OnMissingDependency::Fail,
     );
 
-    let result = runner.execute(&task).unwrap();
+    let result = runner.execute_from_task(&task).unwrap();
 
     assert_eq!(result.task_id, "DIRECT-001");
     assert!(result.passed() || result.legacy_result.is_some() || result.rust_result.is_some());

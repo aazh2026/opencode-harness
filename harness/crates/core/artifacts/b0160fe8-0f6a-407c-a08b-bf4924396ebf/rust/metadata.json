@@ -1,0 +1,12 @@
+{
+  "session_id": "b0160fe8-0f6a-407c-a08b-bf4924396ebf",
+  "runner_name": "rust",
+  "task_id": "TEST-001",
+  "exit_code": 0,
+  "duration_ms": 1,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 6,
+  "stderr_size_bytes": 0,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:21:12.071521Z"
+}
