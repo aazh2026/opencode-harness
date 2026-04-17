@@ -1,0 +1,12 @@
+{
+  "session_id": "490ea4b2-1486-42de-85e6-8982ba7c4d2b",
+  "runner_name": "test-dependency",
+  "task_id": "TEST-001",
+  "exit_code": null,
+  "duration_ms": 0,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 0,
+  "stderr_size_bytes": 160,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:34:30.428645Z"
+}

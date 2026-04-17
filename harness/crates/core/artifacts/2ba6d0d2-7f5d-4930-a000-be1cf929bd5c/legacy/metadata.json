@@ -1,0 +1,12 @@
+{
+  "session_id": "2ba6d0d2-7f5d-4930-a000-be1cf929bd5c",
+  "runner_name": "test-capture",
+  "task_id": "TEST-001",
+  "exit_code": null,
+  "duration_ms": 0,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 0,
+  "stderr_size_bytes": 149,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:35:02.130597Z"
+}

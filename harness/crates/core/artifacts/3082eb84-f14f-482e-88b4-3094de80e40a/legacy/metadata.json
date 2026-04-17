@@ -1,0 +1,12 @@
+{
+  "session_id": "3082eb84-f14f-482e-88b4-3094de80e40a",
+  "runner_name": "test-infra",
+  "task_id": "TEST-001",
+  "exit_code": 0,
+  "duration_ms": 1136,
+  "artifacts_collected": 0,
+  "stdout_size_bytes": 0,
+  "stderr_size_bytes": 103,
+  "side_effects_count": 0,
+  "created_at": "2026-04-17T00:30:51.194467Z"
+}

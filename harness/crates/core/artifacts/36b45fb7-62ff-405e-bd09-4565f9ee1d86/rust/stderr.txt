@@ -1,0 +1,1 @@
+Binary path '/var/folders/r1/47f63j8d4dvfnyg78xfrfhj00000gn/T/.tmpNNiqdD/nonexistent_binary_xyz' does not exist

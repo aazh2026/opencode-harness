@@ -2,6 +2,7 @@ use crate::error::{ErrorType, Result};
 use crate::runners::artifact_persister::{ArtifactPersister, RunnerType};
 use crate::runners::binary_resolver::BinaryResolver;
 use crate::types::capability_summary::CapabilitySummary;
+use crate::types::failure_classification::FailureClassification;
 use crate::types::runner_input::RunnerInput;
 use crate::types::runner_output::RunnerOutput;
 use crate::types::session_metadata::SessionMetadata;
@@ -88,7 +89,29 @@ impl LegacyRunner {
         let start = Instant::now();
         let started_at = Utc::now();
         let resolver = BinaryResolver::new();
-        let binary = resolver.resolve_opencode_with_override(input.binary_path.as_ref())?;
+
+        let binary = match resolver.resolve_opencode_with_override(input.binary_path.as_ref()) {
+            Ok(path) => path,
+            Err(e) => {
+                let err_msg = e.to_string();
+                let failure_kind = if err_msg.contains("does not exist")
+                    || err_msg.contains("Could not find binary")
+                {
+                    Some(FailureClassification::DependencyMissing)
+                } else {
+                    Some(FailureClassification::InfraFailure)
+                };
+                return self.build_error_output(
+                    started_at,
+                    Utc::now(),
+                    input,
+                    None,
+                    format!("Binary resolution failed: {}", err_msg),
+                    failure_kind,
+                );
+            }
+        };
+
         let task = &input.task;
         let task_input = &task.input;
 
@@ -98,21 +121,37 @@ impl LegacyRunner {
             ..Default::default()
         };
 
-        let output = if input.timeout_seconds > 0 {
+        let output_result = if input.timeout_seconds > 0 {
             self.run_command_with_timeout(
                 &binary,
                 &task_input.args,
                 &input.prepared_workspace_path.to_string_lossy(),
                 &input.env_overrides,
                 input.timeout_seconds,
-            )?
+            )
         } else {
             self.run_command_no_timeout(
                 &binary,
                 &task_input.args,
                 &input.prepared_workspace_path.to_string_lossy(),
                 &input.env_overrides,
-            )?
+            )
+        };
+
+        let (output, failure_kind) = match output_result {
+            Ok(o) => (o, None),
+            Err(e) => {
+                let err_msg = e.to_string();
+                let failure = FailureClassification::InfraFailure;
+                return self.build_error_output(
+                    started_at,
+                    Utc::now(),
+                    input,
+                    Some(1),
+                    format!("Command execution failed: {}", err_msg),
+                    Some(failure),
+                );
+            }
         };
 
         let finished_at = Utc::now();
@@ -147,8 +186,61 @@ impl LegacyRunner {
             Vec::new(),
             session_metadata.clone(),
             None,
-            None,
+            failure_kind,
             capability_summary.clone(),
+        )?;
+
+        Ok(runner_output)
+    }
+
+    fn build_error_output(
+        &self,
+        started_at: chrono::DateTime<Utc>,
+        finished_at: chrono::DateTime<Utc>,
+        input: &RunnerInput,
+        exit_code: Option<i32>,
+        error_message: String,
+        failure_kind: Option<FailureClassification>,
+    ) -> Result<RunnerOutput> {
+        let duration_ms = 0;
+        let stdout = String::new();
+        let stderr = error_message;
+
+        let session_metadata = SessionMetadata::new(
+            uuid::Uuid::new_v4().to_string(),
+            self.name.clone(),
+            input.task.id.clone(),
+            started_at,
+            finished_at,
+            input.prepared_workspace_path.clone(),
+        );
+
+        let capability_summary = CapabilitySummary {
+            binary_available: failure_kind != Some(FailureClassification::DependencyMissing),
+            workspace_prepared: input.prepared_workspace_path.exists(),
+            environment_supported: true,
+            timeout_enforced: false,
+            artifacts_collected: 0,
+            side_effects_detected: Vec::new(),
+        };
+
+        let artifact_persister = ArtifactPersister::new(
+            session_metadata.session_id.clone(),
+            PathBuf::from("artifacts"),
+        );
+        artifact_persister.create_directory_structure()?;
+
+        let runner_output = artifact_persister.build_runner_output(
+            RunnerType::Legacy,
+            exit_code,
+            stdout,
+            stderr,
+            duration_ms,
+            Vec::new(),
+            session_metadata,
+            None,
+            failure_kind,
+            capability_summary,
         )?;
 
         Ok(runner_output)
@@ -259,6 +351,48 @@ impl LegacyRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::capture_options::CaptureOptions;
+    use crate::types::provider_mode::ProviderMode;
+    use tempfile::TempDir;
+
+    fn create_test_task() -> crate::types::task::Task {
+        crate::types::task::Task::new(
+            "TEST-001",
+            "Test Task",
+            crate::types::task::TaskCategory::Core,
+            "test-fixture",
+            "Test task description",
+            "Test expected outcome",
+            vec![],
+            crate::types::entry_mode::EntryMode::CLI,
+            crate::types::agent_mode::AgentMode::OneShot,
+            ProviderMode::Both,
+            crate::types::task_input::TaskInput::new("echo", vec!["test".to_string()], "/tmp"),
+            vec![],
+            crate::types::severity::Severity::Medium,
+            crate::types::execution_policy::ExecutionPolicy::ManualCheck,
+            60,
+            crate::types::on_missing_dependency::OnMissingDependency::Fail,
+        )
+    }
+
+    fn create_runner_input(
+        task: crate::types::task::Task,
+        workspace_path: PathBuf,
+        env_overrides: HashMap<String, String>,
+        timeout_seconds: u64,
+        binary_path: Option<PathBuf>,
+    ) -> RunnerInput {
+        RunnerInput::new(
+            task,
+            workspace_path,
+            env_overrides,
+            timeout_seconds,
+            binary_path,
+            ProviderMode::Both,
+            CaptureOptions::default(),
+        )
+    }
 
     #[test]
     fn test_legacy_runner_creation() {
@@ -288,5 +422,102 @@ mod tests {
         let artifact = crate::types::artifact::Artifact::stdout();
         let result = LegacyRunnerResult::new("task-1").with_artifacts(vec![artifact]);
         assert_eq!(result.artifacts.len(), 1);
+    }
+
+    #[test]
+    fn test_failure_classification_dependency_missing_when_binary_not_found() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task();
+        let nonexistent_binary = temp_dir.path().join("nonexistent_binary_xyz");
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            HashMap::new(),
+            5,
+            Some(nonexistent_binary),
+        );
+
+        let runner = LegacyRunner::new("test-dependency");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert_eq!(
+            output.failure_kind,
+            Some(FailureClassification::DependencyMissing),
+            "Expected DependencyMissing when binary not found"
+        );
+        assert!(
+            !output.capability_summary.binary_available,
+            "binary_available should be false when binary not found"
+        );
+    }
+
+    #[test]
+    fn test_failure_classification_infra_failure_on_binary_spawn_failure() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task();
+        let invalid_binary = temp_dir
+            .path()
+            .join("invalid_binary_that_cannot_be_executed");
+        #[cfg(unix)]
+        {
+            std::fs::write(&invalid_binary, "not an executable").unwrap();
+        }
+        #[cfg(windows)]
+        {
+            std::fs::write(&invalid_binary, "not executable").unwrap();
+        }
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            HashMap::new(),
+            5,
+            Some(invalid_binary),
+        );
+
+        let runner = LegacyRunner::new("test-infra");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert_eq!(
+            output.failure_kind,
+            Some(FailureClassification::InfraFailure),
+            "Expected InfraFailure when binary cannot be executed"
+        );
+    }
+
+    #[test]
+    fn test_runner_output_captures_all_failure_kinds() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task();
+        let nonexistent_binary = temp_dir.path().join("nonexistent");
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            HashMap::new(),
+            5,
+            Some(nonexistent_binary),
+        );
+
+        let runner = LegacyRunner::new("test-capture");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+
+        assert!(
+            output.failure_kind.is_some(),
+            "failure_kind should be Some for error case"
+        );
+        let failure = output.failure_kind.unwrap();
+        match failure {
+            FailureClassification::DependencyMissing => {}
+            FailureClassification::EnvironmentNotSupported => {}
+            FailureClassification::InfraFailure => {}
+            FailureClassification::ImplementationFailure => {}
+            FailureClassification::FlakySuspected => {}
+        }
     }
 }

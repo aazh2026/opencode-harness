@@ -4,6 +4,7 @@ use crate::runners::artifact_persister::ArtifactPersister;
 use crate::runners::legacy_runner::{LegacyRunner, LegacyRunnerResult};
 use crate::runners::rust_runner::{RustRunner, RustRunnerResult};
 use crate::types::artifact::Artifact;
+use crate::types::failure_classification::FailureClassification;
 use crate::types::parity_verdict::{DiffCategory, ParityVerdict};
 use crate::types::runner_input::RunnerInput;
 use crate::types::runner_output::RunnerOutput;
@@ -50,6 +51,13 @@ impl<L: TaskLoader> DifferentialRunner<L> {
             (Ok(lr), Ok(rr)) => {
                 let legacy_paths = lr.artifact_paths.clone();
                 let rust_paths = rr.artifact_paths.clone();
+                let failure_kind = match &verdict {
+                    ParityVerdict::Different { category } => match category {
+                        DiffCategory::Timing => Some(FailureClassification::FlakySuspected),
+                        _ => Some(FailureClassification::ImplementationFailure),
+                    },
+                    _ => None,
+                };
                 Ok(DifferentialResult {
                     task_id: input.task.id.clone(),
                     legacy_result: Some(lr.into()),
@@ -60,12 +68,20 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                     verdict_path,
                     legacy_artifact_paths: legacy_paths,
                     rust_artifact_paths: rust_paths,
+                    failure_kind,
                 })
             }
             (Err(e), Ok(rr)) => {
                 let runner = "LegacyRunner".to_string();
                 let reason = e.to_string();
                 let rust_paths = rr.artifact_paths.clone();
+                let failure_kind = if reason.contains("Binary resolution failed")
+                    || reason.contains("does not exist")
+                {
+                    Some(FailureClassification::DependencyMissing)
+                } else {
+                    Some(FailureClassification::InfraFailure)
+                };
                 Ok(DifferentialResult {
                     task_id: input.task.id.clone(),
                     legacy_result: None,
@@ -76,12 +92,18 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                     verdict_path: None,
                     legacy_artifact_paths: Vec::new(),
                     rust_artifact_paths: rust_paths,
+                    failure_kind,
                 })
             }
             (Ok(lr), Err(e)) => {
                 let runner = "RustRunner".to_string();
                 let reason = e.to_string();
                 let legacy_paths = lr.artifact_paths.clone();
+                let failure_kind = if reason.contains("does not exist") {
+                    Some(FailureClassification::DependencyMissing)
+                } else {
+                    Some(FailureClassification::InfraFailure)
+                };
                 Ok(DifferentialResult {
                     task_id: input.task.id.clone(),
                     legacy_result: Some(lr.into()),
@@ -92,22 +114,32 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                     verdict_path: None,
                     legacy_artifact_paths: legacy_paths,
                     rust_artifact_paths: Vec::new(),
+                    failure_kind,
                 })
             }
-            (Err(e1), Err(e2)) => Ok(DifferentialResult {
-                task_id: input.task.id.clone(),
-                legacy_result: None,
-                rust_result: None,
-                verdict: ParityVerdict::Error {
-                    runner: "Both".to_string(),
-                    reason: format!("legacy: {}; rust: {}", e1, e2),
-                },
-                duration_ms,
-                diff_report_path: None,
-                verdict_path: None,
-                legacy_artifact_paths: Vec::new(),
-                rust_artifact_paths: Vec::new(),
-            }),
+            (Err(e1), Err(e2)) => {
+                let reason = format!("legacy: {}; rust: {}", e1, e2);
+                let failure_kind = if reason.contains("does not exist") {
+                    Some(FailureClassification::DependencyMissing)
+                } else {
+                    Some(FailureClassification::InfraFailure)
+                };
+                Ok(DifferentialResult {
+                    task_id: input.task.id.clone(),
+                    legacy_result: None,
+                    rust_result: None,
+                    verdict: ParityVerdict::Error {
+                        runner: "Both".to_string(),
+                        reason,
+                    },
+                    duration_ms,
+                    diff_report_path: None,
+                    verdict_path: None,
+                    legacy_artifact_paths: Vec::new(),
+                    rust_artifact_paths: Vec::new(),
+                    failure_kind,
+                })
+            }
         }
     }
 
@@ -220,6 +252,7 @@ pub struct DifferentialResult {
     pub verdict_path: Option<PathBuf>,
     pub legacy_artifact_paths: Vec<PathBuf>,
     pub rust_artifact_paths: Vec<PathBuf>,
+    pub failure_kind: Option<FailureClassification>,
 }
 
 impl DifferentialResult {
@@ -234,6 +267,7 @@ impl DifferentialResult {
             verdict_path: None,
             legacy_artifact_paths: Vec::new(),
             rust_artifact_paths: Vec::new(),
+            failure_kind: None,
         }
     }
 
@@ -547,5 +581,127 @@ on_missing_dependency: Fail
         assert!(result.rust_artifact_paths.is_empty());
         assert!(result.diff_report_path.is_none());
         assert!(result.verdict_path.is_none());
+    }
+
+    #[test]
+    fn test_differential_result_failure_kind_when_both_runners_succeed_identical() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+        let task = create_test_task();
+        let input = create_test_runner_input(task);
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let diff_result = result.unwrap();
+        if diff_result.legacy_result.is_some() && diff_result.rust_result.is_some() {
+            if matches!(diff_result.verdict, ParityVerdict::Identical) {
+                assert!(
+                    diff_result.failure_kind.is_none(),
+                    "failure_kind should be None when runners are identical"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_differential_result_failure_kind_implementation_failure() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+        let task = create_test_task();
+        let input = create_test_runner_input(task);
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let diff_result = result.unwrap();
+        match diff_result.verdict {
+            ParityVerdict::Different { category } => match category {
+                DiffCategory::OutputText | DiffCategory::ExitCode | DiffCategory::SideEffects => {
+                    assert_eq!(
+                            diff_result.failure_kind,
+                            Some(FailureClassification::ImplementationFailure),
+                            "Expected ImplementationFailure for output/exitcode/side-effects difference"
+                        );
+                }
+                DiffCategory::Timing => {
+                    assert_eq!(
+                        diff_result.failure_kind,
+                        Some(FailureClassification::FlakySuspected),
+                        "Expected FlakySuspected for timing difference"
+                    );
+                }
+                DiffCategory::Protocol => {
+                    assert_eq!(
+                        diff_result.failure_kind,
+                        Some(FailureClassification::ImplementationFailure),
+                        "Expected ImplementationFailure for protocol difference"
+                    );
+                }
+            },
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn test_differential_result_failure_kind_none_for_identical() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+        let task = create_test_task();
+        let input = create_test_runner_input(task);
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let diff_result = result.unwrap();
+        match diff_result.verdict {
+            ParityVerdict::Identical | ParityVerdict::Equivalent => {
+                assert!(
+                    diff_result.failure_kind.is_none(),
+                    "failure_kind should be None for identical or equivalent results"
+                );
+            }
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn test_differential_result_failure_kind_infra_failure_when_runner_fails() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+        let mut task = create_test_task();
+        task.input.command = "nonexistent_command_xyz".to_string();
+        task.input.args = vec![];
+        let input = create_test_runner_input(task);
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let diff_result = result.unwrap();
+        if diff_result.legacy_result.is_none() || diff_result.rust_result.is_none() {
+            assert!(
+                matches!(
+                    diff_result.failure_kind,
+                    Some(FailureClassification::InfraFailure)
+                        | Some(FailureClassification::DependencyMissing)
+                ),
+                "Expected InfraFailure or DependencyMissing when a runner fails, got: {:?}",
+                diff_result.failure_kind
+            );
+        }
+    }
+
+    #[test]
+    fn test_all_failure_classification_variants_in_differential_result() {
+        let _result = DifferentialResult::new("TEST".to_string());
+        let variants = [
+            FailureClassification::ImplementationFailure,
+            FailureClassification::DependencyMissing,
+            FailureClassification::EnvironmentNotSupported,
+            FailureClassification::InfraFailure,
+            FailureClassification::FlakySuspected,
+        ];
+
+        for variant in variants {
+            let mut result_with_failure = DifferentialResult::new("TEST".to_string());
+            result_with_failure.failure_kind = Some(variant);
+            assert_eq!(result_with_failure.failure_kind, Some(variant));
+        }
     }
 }

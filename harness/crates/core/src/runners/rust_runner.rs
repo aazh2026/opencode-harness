@@ -2,6 +2,7 @@ use crate::error::{ErrorType, Result};
 use crate::runners::artifact_persister::{ArtifactPersister, RunnerType};
 use crate::types::artifact::Artifact;
 use crate::types::capability_summary::CapabilitySummary;
+use crate::types::failure_classification::FailureClassification;
 use crate::types::runner_input::RunnerInput;
 use crate::types::runner_output::RunnerOutput;
 use crate::types::session_metadata::SessionMetadata;
@@ -102,9 +103,32 @@ impl RustRunner {
         let start = Instant::now();
         let started_at = Utc::now();
         let binary = if let Some(binary_path) = &input.binary_path {
-            binary_path.clone()
+            if binary_path.exists() {
+                binary_path.clone()
+            } else {
+                return self.build_error_output(
+                    started_at,
+                    Utc::now(),
+                    input,
+                    None,
+                    format!("Binary path '{}' does not exist", binary_path.display()),
+                    Some(FailureClassification::DependencyMissing),
+                );
+            }
         } else {
-            PathBuf::from(&input.task.input.command)
+            let cmd_path = PathBuf::from(&input.task.input.command);
+            if cmd_path.exists() {
+                cmd_path
+            } else {
+                return self.build_error_output(
+                    started_at,
+                    Utc::now(),
+                    input,
+                    None,
+                    format!("Command '{}' does not exist", input.task.input.command),
+                    Some(FailureClassification::DependencyMissing),
+                );
+            }
         };
         let task = &input.task;
         let task_input = &task.input;
@@ -115,21 +139,37 @@ impl RustRunner {
             ..Default::default()
         };
 
-        let output = if input.timeout_seconds > 0 {
+        let output_result = if input.timeout_seconds > 0 {
             self.run_command_with_timeout(
                 &binary,
                 &task_input.args,
                 &input.prepared_workspace_path.to_string_lossy(),
                 &input.env_overrides,
                 input.timeout_seconds,
-            )?
+            )
         } else {
             self.run_command_no_timeout(
                 &binary,
                 &task_input.args,
                 &input.prepared_workspace_path.to_string_lossy(),
                 &input.env_overrides,
-            )?
+            )
+        };
+
+        let (output, failure_kind) = match output_result {
+            Ok(o) => (o, None),
+            Err(e) => {
+                let err_msg = e.to_string();
+                let failure = FailureClassification::InfraFailure;
+                return self.build_error_output(
+                    started_at,
+                    Utc::now(),
+                    input,
+                    Some(1),
+                    format!("Command execution failed: {}", err_msg),
+                    Some(failure),
+                );
+            }
         };
 
         let finished_at = Utc::now();
@@ -164,8 +204,61 @@ impl RustRunner {
             Vec::new(),
             session_metadata.clone(),
             None,
-            None,
+            failure_kind,
             capability_summary.clone(),
+        )?;
+
+        Ok(runner_output)
+    }
+
+    fn build_error_output(
+        &self,
+        started_at: chrono::DateTime<Utc>,
+        finished_at: chrono::DateTime<Utc>,
+        input: &RunnerInput,
+        exit_code: Option<i32>,
+        error_message: String,
+        failure_kind: Option<FailureClassification>,
+    ) -> Result<RunnerOutput> {
+        let duration_ms = 0;
+        let stdout = String::new();
+        let stderr = error_message;
+
+        let session_metadata = SessionMetadata::new(
+            uuid::Uuid::new_v4().to_string(),
+            self.name.clone(),
+            input.task.id.clone(),
+            started_at,
+            finished_at,
+            input.prepared_workspace_path.clone(),
+        );
+
+        let capability_summary = CapabilitySummary {
+            binary_available: failure_kind != Some(FailureClassification::DependencyMissing),
+            workspace_prepared: input.prepared_workspace_path.exists(),
+            environment_supported: true,
+            timeout_enforced: false,
+            artifacts_collected: 0,
+            side_effects_detected: Vec::new(),
+        };
+
+        let artifact_persister = ArtifactPersister::new(
+            session_metadata.session_id.clone(),
+            PathBuf::from("artifacts"),
+        );
+        artifact_persister.create_directory_structure()?;
+
+        let runner_output = artifact_persister.build_runner_output(
+            RunnerType::Rust,
+            exit_code,
+            stdout,
+            stderr,
+            duration_ms,
+            Vec::new(),
+            session_metadata,
+            None,
+            failure_kind,
+            capability_summary,
         )?;
 
         Ok(runner_output)
@@ -497,5 +590,93 @@ mod tests {
         assert!(result.is_ok());
         let output = result.unwrap();
         assert!(output.capability_summary.binary_available);
+    }
+
+    #[test]
+    fn test_failure_classification_dependency_missing_when_binary_not_found() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task();
+        let nonexistent_binary = temp_dir.path().join("nonexistent_binary_xyz");
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            HashMap::new(),
+            5,
+            Some(nonexistent_binary),
+        );
+
+        let runner = RustRunner::new("test-dependency");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert_eq!(
+            output.failure_kind,
+            Some(FailureClassification::DependencyMissing),
+            "Expected DependencyMissing when binary not found"
+        );
+        assert!(
+            !output.capability_summary.binary_available,
+            "binary_available should be false when binary not found"
+        );
+    }
+
+    #[test]
+    fn test_failure_classification_infra_failure_on_spawn_failure() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task();
+        let not_executable = temp_dir.path().join("not_executable");
+        std::fs::write(&not_executable, "not executable content").unwrap();
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            HashMap::new(),
+            5,
+            Some(not_executable),
+        );
+
+        let runner = RustRunner::new("test-infra");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+        let output = result.unwrap();
+        assert_eq!(
+            output.failure_kind,
+            Some(FailureClassification::InfraFailure),
+            "Expected InfraFailure when binary cannot be spawned"
+        );
+    }
+
+    #[test]
+    fn test_runner_output_failure_kind_properly_captured() {
+        let temp_dir = TempDir::new().unwrap();
+        let task = create_test_task();
+        let nonexistent_binary = temp_dir.path().join("nonexistent");
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            HashMap::new(),
+            5,
+            Some(nonexistent_binary),
+        );
+
+        let runner = RustRunner::new("test-capture");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+
+        assert!(
+            output.failure_kind.is_some(),
+            "failure_kind should be Some for error case"
+        );
+
+        let serialized = serde_json::to_string(&output).expect("serialization should succeed");
+        let deserialized: RunnerOutput =
+            serde_json::from_str(&serialized).expect("deserialization should succeed");
+        assert_eq!(
+            deserialized.failure_kind, output.failure_kind,
+            "failure_kind should survive serialization round-trip"
+        );
     }
 }
