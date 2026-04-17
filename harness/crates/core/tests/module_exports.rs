@@ -454,3 +454,109 @@ fn test_module_exports_compile_correctly() {
             Box::new(loaders::DefaultFixtureLoader::new(std::path::PathBuf::new()));
     }
 }
+
+use opencode_core::runners::{
+    ArtifactDiff, ArtifactPersister, BinaryResolver, DiffReport, DifferentialResult,
+    DifferentialRunner, LegacyRunner, LegacyRunnerResult, MetadataJson, RunnerType, RustRunner,
+    RustRunnerResult,
+};
+
+#[test]
+fn test_runners_module_exports_artifact_persister() {
+    let persister = ArtifactPersister::new("test-run", std::path::PathBuf::from("/tmp/artifacts"));
+    assert_eq!(persister.run_id(), "test-run");
+    let _ = ArtifactDiff {
+        only_in_legacy: vec![],
+        only_in_rust: vec![],
+        in_both: vec![],
+    };
+    let _ = MetadataJson {
+        session_id: "session-1".to_string(),
+        runner_name: "LegacyRunner".to_string(),
+        task_id: "TASK-001".to_string(),
+        exit_code: Some(0),
+        duration_ms: 100,
+        artifacts_collected: 0,
+        stdout_size_bytes: 10,
+        stderr_size_bytes: 5,
+        side_effects_count: 0,
+        created_at: chrono::Utc::now(),
+    };
+    assert_eq!(RunnerType::Legacy, RunnerType::Legacy);
+    assert_eq!(RunnerType::Rust, RunnerType::Rust);
+}
+
+#[test]
+fn test_runners_module_exports_binary_resolver() {
+    let resolver = BinaryResolver::new();
+    let _ = resolver;
+}
+
+#[test]
+fn test_runners_module_exports_differential_runner() {
+    use opencode_core::loaders::DefaultTaskLoader;
+    let loader = DefaultTaskLoader::new();
+    let runner = DifferentialRunner::new(loader);
+    let _ = runner;
+    let _ = DifferentialResult::new("TEST-001".to_string());
+}
+
+#[test]
+fn test_runners_module_exports_legacy_runner() {
+    let runner = LegacyRunner::new("legacy");
+    let _ = runner;
+    let _ = LegacyRunnerResult::new("task-1");
+}
+
+#[test]
+fn test_runners_module_exports_rust_runner() {
+    let runner = RustRunner::new("rust");
+    let _ = runner;
+    let _ = RustRunnerResult::new("task-1");
+}
+
+#[test]
+fn test_runners_all_exports_accessible() {
+    fn _check_artifact_persister_public() {
+        let _persister: ArtifactPersister =
+            ArtifactPersister::new("run", std::path::PathBuf::from("/tmp"));
+    }
+    fn _check_runner_type_public() {
+        let _rt: RunnerType = RunnerType::Legacy;
+    }
+    fn _check_diff_report_public() {
+        let _report: DiffReport = DiffReport {
+            run_id: "run-1".to_string(),
+            legacy_exit_code: Some(0),
+            rust_exit_code: Some(0),
+            legacy_duration_ms: 100,
+            rust_duration_ms: 100,
+            verdict: "Identical".to_string(),
+            verdict_category: None,
+            legacy_stdout_size: 10,
+            rust_stdout_size: 10,
+            legacy_stderr_size: 5,
+            rust_stderr_size: 5,
+            artifacts_diff: ArtifactDiff {
+                only_in_legacy: vec![],
+                only_in_rust: vec![],
+                in_both: vec![],
+            },
+            generated_at: chrono::Utc::now(),
+        };
+    }
+    fn _check_metadata_json_public() {
+        let _meta: MetadataJson = MetadataJson {
+            session_id: "session-1".to_string(),
+            runner_name: "LegacyRunner".to_string(),
+            task_id: "TASK-001".to_string(),
+            exit_code: Some(0),
+            duration_ms: 100,
+            artifacts_collected: 0,
+            stdout_size_bytes: 10,
+            stderr_size_bytes: 5,
+            side_effects_count: 0,
+            created_at: chrono::Utc::now(),
+        };
+    }
+}
