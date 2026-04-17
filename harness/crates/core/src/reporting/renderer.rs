@@ -1,5 +1,6 @@
 use crate::reporting::gate::CIGate;
-use crate::reporting::report::ParityReport;
+use crate::reporting::report::{ParityReport, TaskResult};
+use crate::types::parity_verdict::ParityVerdict;
 use std::fmt::Write;
 
 /// Trait for rendering parity reports to various output formats.
@@ -344,6 +345,188 @@ impl ReportRenderer for FileRenderer {
     }
 }
 
+pub struct JUnitXmlRenderer;
+
+impl JUnitXmlRenderer {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn render_report(&self, report: &ParityReport) -> Result<String, std::fmt::Error> {
+        let mut output = String::new();
+        self.write_report_header(&mut output)?;
+
+        let tests_total = report.task_results.len() as u32;
+        let failures = report.failed_count();
+        let errors = report.error_count();
+        let skipped = report
+            .task_results
+            .iter()
+            .filter(|t| {
+                matches!(
+                    t.verdict,
+                    ParityVerdict::ManualCheck { .. } | ParityVerdict::Blocked { .. }
+                )
+            })
+            .count() as u32;
+
+        writeln!(
+            output,
+            r#"<testsuites name="parity-report" tests="{}" failures="{}" errors="{}" skipped="{}">"#,
+            tests_total,
+            failures,
+            errors,
+            skipped
+        )?;
+
+        let suite_name = if report.suite_info.name.is_empty() {
+            "default"
+        } else {
+            &report.suite_info.name
+        };
+
+        let suite_output = self.render_test_suite(suite_name, &report.task_results);
+        output.push_str(&suite_output);
+
+        writeln!(output, "</testsuites>")?;
+
+        Ok(output)
+    }
+
+    fn write_report_header(&self, writer: &mut String) -> std::fmt::Result {
+        writeln!(writer, r#"<?xml version="1.0" encoding="UTF-8"?>"#)
+    }
+
+    fn render_test_suite(&self, suite_name: &str, results: &[TaskResult]) -> String {
+        let mut output = String::new();
+
+        let tests = results.len() as u32;
+        let failures = results.iter().filter(|t| t.is_fail()).count() as u32;
+        let errors = results.iter().filter(|t| t.is_error()).count() as u32;
+        let skipped = results
+            .iter()
+            .filter(|t| {
+                matches!(
+                    t.verdict,
+                    ParityVerdict::ManualCheck { .. } | ParityVerdict::Blocked { .. }
+                )
+            })
+            .count() as u32;
+        let total_time_ms: u64 = results.iter().map(|r| r.duration_ms).sum();
+        let time_secs = total_time_ms as f64 / 1000.0;
+
+        writeln!(
+            output,
+            r#"  <testsuite name="{}" tests="{}" failures="{}" errors="{}" skipped="{}" time="{}">"#,
+            suite_name,
+            tests,
+            failures,
+            errors,
+            skipped,
+            time_secs
+        )
+        .unwrap();
+
+        for result in results {
+            let case_output = self.render_test_case(result);
+            output.push_str(&case_output);
+        }
+
+        writeln!(output, "  </testsuite>").unwrap();
+
+        output
+    }
+
+    fn render_test_case(&self, result: &TaskResult) -> String {
+        let mut output = String::new();
+        let time_secs = result.duration_ms as f64 / 1000.0;
+
+        writeln!(
+            output,
+            r#"    <testcase name="{}" classname="{}" time="{}">"#,
+            result.task_id, result.task_id, time_secs
+        )
+        .unwrap();
+
+        if let Some((result_type, message, type_attr)) = self.verdict_to_junit_result(&result.verdict) {
+            if result_type == "failure" {
+                writeln!(
+                    output,
+                    r#"      <failure message="{}" type="{}">"#,
+                    message, type_attr
+                )
+                .unwrap();
+                if let ParityVerdict::Fail { details, .. } = &result.verdict {
+                    writeln!(output, "        {}", details).unwrap();
+                }
+                writeln!(output, "      </failure>").unwrap();
+            } else {
+                writeln!(
+                    output,
+                    r#"      <error message="{}" type="{}">"#,
+                    message, type_attr
+                )
+                .unwrap();
+                if let ParityVerdict::Error { reason, .. } = &result.verdict {
+                    writeln!(output, "        {}", reason).unwrap();
+                }
+                if let ParityVerdict::Blocked { reason, .. } = &result.verdict {
+                    writeln!(output, "        {:?}", reason).unwrap();
+                }
+                if let ParityVerdict::ManualCheck { reason, .. } = &result.verdict {
+                    writeln!(output, "        {}", reason).unwrap();
+                }
+                writeln!(output, "      </error>").unwrap();
+            }
+        } else if matches!(result.verdict, ParityVerdict::ManualCheck { .. } | ParityVerdict::Blocked { .. }) {
+            writeln!(output, r#"      <skipped/>"#).unwrap();
+        }
+
+        writeln!(output, "    </testcase>").unwrap();
+
+        output
+    }
+
+    fn verdict_to_junit_result(&self, verdict: &ParityVerdict) -> Option<(String, String, String)> {
+        match verdict {
+            ParityVerdict::Pass => None,
+            ParityVerdict::PassWithAllowedVariance { .. } => None,
+            ParityVerdict::Fail { details, .. } => {
+                Some(("failure".to_string(), details.clone(), "ImplementationFailure".to_string()))
+            }
+            ParityVerdict::Warn { message, .. } => {
+                Some(("failure".to_string(), message.clone(), "Warning".to_string()))
+            }
+            ParityVerdict::ManualCheck { reason, .. } => {
+                Some(("error".to_string(), reason.clone(), "ManualCheckRequired".to_string()))
+            }
+            ParityVerdict::Blocked { reason, .. } => {
+                Some(("error".to_string(), format!("{:?}", reason), "Blocked".to_string()))
+            }
+            ParityVerdict::Error { runner, reason } => {
+                Some(("error".to_string(), format!("{}: {}", runner, reason), runner.clone()))
+            }
+        }
+    }
+}
+
+impl Default for JUnitXmlRenderer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ReportRenderer for JUnitXmlRenderer {
+    fn render_report(
+        &self,
+        report: &ParityReport,
+        writer: &mut dyn std::fmt::Write,
+    ) -> std::fmt::Result {
+        let xml = self.render_report(report).map_err(|_| std::fmt::Error)?;
+        write!(writer, "{}", xml)
+    }
+}
+
 /// Renders reports in GitHub Actions annotation format.
 pub struct GitHubSummaryRenderer;
 
@@ -542,5 +725,240 @@ mod tests {
         let renderer = ConsoleRenderer::with_color(false);
         let result = renderer.colored("Test", "green");
         assert_eq!(result, "Test");
+    }
+
+    #[test]
+    fn test_junit_xml_renderer_new() {
+        let _renderer = JUnitXmlRenderer::new();
+        assert!(true);
+    }
+
+    #[test]
+    fn test_junit_xml_renderer_render_report_header() {
+        let renderer = JUnitXmlRenderer::new();
+        let mut report = ParityReport::new("TestRunner");
+        report.add_task(TaskResult::new(
+            "TEST-001".to_string(),
+            ParityVerdict::Pass,
+            100,
+        ));
+        report.compute_summary();
+
+        let xml = renderer.render_report(&report).unwrap();
+        assert!(xml.starts_with(r#"<?xml version="1.0" encoding="UTF-8"?>"#));
+        assert!(xml.contains(r#"<testsuites name="parity-report""#));
+        assert!(xml.contains(r#"</testsuites>"#));
+    }
+
+    #[test]
+    fn test_junit_xml_renderer_render_test_suite() {
+        let renderer = JUnitXmlRenderer::new();
+        let results = vec![
+            TaskResult::new("TEST-001".to_string(), ParityVerdict::Pass, 100),
+            TaskResult::new(
+                "TEST-002".to_string(),
+                ParityVerdict::Fail {
+                    category: DiffCategory::OutputText,
+                    details: "Mismatch".to_string(),
+                },
+                50,
+            ),
+        ];
+
+        let xml = renderer.render_test_suite("pr-smoke", &results);
+        assert!(xml.contains(r#"<testsuite name="pr-smoke""#));
+        assert!(xml.contains(r#"tests="2""#));
+        assert!(xml.contains(r#"failures="1""#));
+        assert!(xml.contains(r#"errors="0""#));
+        assert!(xml.contains(r#"</testsuite>"#));
+    }
+
+    #[test]
+    fn test_junit_xml_renderer_render_test_case_passed() {
+        let renderer = JUnitXmlRenderer::new();
+        let result = TaskResult::new("TEST-001".to_string(), ParityVerdict::Pass, 105);
+
+        let xml = renderer.render_test_case(&result);
+        assert!(xml.contains(r#"<testcase name="TEST-001""#));
+        assert!(xml.contains(r#"classname="TEST-001""#));
+        assert!(xml.contains(r#"time="0.105""#));
+        assert!(xml.contains(r#"</testcase>"#));
+        assert!(!xml.contains("<failure>"));
+        assert!(!xml.contains("<error>"));
+    }
+
+    #[test]
+    fn test_junit_xml_renderer_render_test_case_failed() {
+        let renderer = JUnitXmlRenderer::new();
+        let result = TaskResult::new(
+            "TEST-002".to_string(),
+            ParityVerdict::Fail {
+                category: DiffCategory::OutputText,
+                details: "Output mismatch".to_string(),
+            },
+            89,
+        );
+
+        let xml = renderer.render_test_case(&result);
+        assert!(xml.contains(r#"<testcase name="TEST-002""#));
+        assert!(xml.contains(r#"time="0.089""#));
+        assert!(xml.contains(r#"<failure message="Output mismatch""#));
+        assert!(xml.contains("Output mismatch"));
+        assert!(xml.contains(r#"</failure>"#));
+        assert!(xml.contains(r#"</testcase>"#));
+    }
+
+    #[test]
+    fn test_junit_xml_verdict_to_junit_pass() {
+        let renderer = JUnitXmlRenderer::new();
+        let result = renderer.verdict_to_junit_result(&ParityVerdict::Pass);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_junit_xml_verdict_to_junit_fail() {
+        let renderer = JUnitXmlRenderer::new();
+        let verdict = ParityVerdict::Fail {
+            category: DiffCategory::OutputText,
+            details: "Test mismatch".to_string(),
+        };
+        let result = renderer.verdict_to_junit_result(&verdict);
+        assert!(result.is_some());
+        let (result_type, message, type_attr) = result.unwrap();
+        assert_eq!(result_type, "failure");
+        assert_eq!(message, "Test mismatch");
+        assert_eq!(type_attr, "ImplementationFailure");
+    }
+
+    #[test]
+    fn test_junit_xml_full_report_rendering() {
+        let renderer = JUnitXmlRenderer::new();
+        let mut report = ParityReport::new("TestRunner");
+        report.add_task(TaskResult::new("TEST-001".to_string(), ParityVerdict::Pass, 100));
+        report.add_task(TaskResult::new(
+            "TEST-002".to_string(),
+            ParityVerdict::Fail {
+                category: DiffCategory::OutputText,
+                details: "Mismatch".to_string(),
+            },
+            50,
+        ));
+        report.add_task(TaskResult::new(
+            "TEST-003".to_string(),
+            ParityVerdict::Error {
+                runner: "TestRunner".to_string(),
+                reason: "Binary not found".to_string(),
+            },
+            10,
+        ));
+        report.suite_info.name = "pr-smoke".to_string();
+        report.compute_summary();
+
+        let xml = renderer.render_report(&report).unwrap();
+
+        assert!(xml.starts_with(r#"<?xml version="1.0" encoding="UTF-8"?>"#));
+        assert!(xml.contains(r#"<testsuites name="parity-report""#));
+        assert!(xml.contains(r#"tests="3""#));
+        assert!(xml.contains(r#"failures="1""#));
+        assert!(xml.contains(r#"errors="1""#));
+        assert!(xml.contains(r#"<testsuite name="pr-smoke""#));
+        assert!(xml.contains(r#"<testcase name="TEST-001""#));
+        assert!(xml.contains(r#"<failure"#));
+        assert!(xml.contains(r#"<error"#));
+        assert!(xml.contains(r#"</testsuites>"#));
+    }
+
+    #[test]
+    fn test_junit_xml_renderer_default() {
+        let renderer = JUnitXmlRenderer::default();
+        let report = ParityReport::new("TestRunner");
+        let xml = renderer.render_report(&report).unwrap();
+        assert!(xml.contains(r#"<?xml version="1.0" encoding="UTF-8"?>"#));
+    }
+
+    #[test]
+    fn test_junit_xml_report_renderer_trait() {
+        let renderer = JUnitXmlRenderer::new();
+        let mut report = ParityReport::new("TestRunner");
+        report.add_task(TaskResult::new(
+            "TEST-001".to_string(),
+            ParityVerdict::Pass,
+            100,
+        ));
+        report.compute_summary();
+
+        let mut output = String::new();
+        <JUnitXmlRenderer as ReportRenderer>::render_report(&renderer, &report, &mut output).unwrap();
+        assert!(output.starts_with(r#"<?xml version="1.0" encoding="UTF-8"?>"#));
+    }
+
+    #[test]
+    fn test_junit_xml_error_verdict() {
+        let renderer = JUnitXmlRenderer::new();
+        let result = TaskResult::new(
+            "TEST-ERROR".to_string(),
+            ParityVerdict::Error {
+                runner: "TestRunner".to_string(),
+                reason: "binary not found".to_string(),
+            },
+            0,
+        );
+
+        let xml = renderer.render_test_case(&result);
+        assert!(xml.contains(r#"<error message="TestRunner: binary not found""#));
+        assert!(xml.contains(r#"type="TestRunner""#));
+    }
+
+    #[test]
+    fn test_junit_xml_blocked_verdict() {
+        let renderer = JUnitXmlRenderer::new();
+        let result = TaskResult::new(
+            "TEST-BLOCKED".to_string(),
+            ParityVerdict::Blocked {
+                reason: crate::types::parity_verdict::BlockedReason::BinaryNotFound {
+                    binary: "opencode".to_string(),
+                },
+            },
+            0,
+        );
+
+        let xml = renderer.render_test_case(&result);
+        assert!(xml.contains(r#"<error"#));
+        assert!(xml.contains("BinaryNotFound"));
+        assert!(xml.contains(r#"type="Blocked""#));
+    }
+
+    #[test]
+    fn test_junit_xml_manual_check_verdict() {
+        let renderer = JUnitXmlRenderer::new();
+        let result = TaskResult::new(
+            "TEST-MANUAL".to_string(),
+            ParityVerdict::ManualCheck {
+                reason: "Ambiguous output".to_string(),
+                candidates: vec![],
+            },
+            0,
+        );
+
+        let xml = renderer.render_test_case(&result);
+        assert!(xml.contains(r#"<error message="Ambiguous output""#));
+        assert!(xml.contains(r#"type="ManualCheckRequired""#));
+    }
+
+    #[test]
+    fn test_junit_xml_warn_verdict() {
+        let renderer = JUnitXmlRenderer::new();
+        let result = TaskResult::new(
+            "TEST-WARN".to_string(),
+            ParityVerdict::Warn {
+                category: DiffCategory::Timing,
+                message: "Timing slightly off".to_string(),
+            },
+            0,
+        );
+
+        let xml = renderer.render_test_case(&result);
+        assert!(xml.contains(r#"<failure message="Timing slightly off""#));
+        assert!(xml.contains(r#"type="Warning""#));
     }
 }

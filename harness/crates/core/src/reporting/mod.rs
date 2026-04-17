@@ -8,6 +8,6 @@ pub mod suite;
 pub use gate::{CIGate, GateConfig, GateFailure, GateLevel, GateWarning};
 pub use github::GitHubAnnotations;
 pub use metrics::{MetricsCollector, TimingStats};
-pub use renderer::{ConsoleRenderer, FileRenderer, GitHubSummaryRenderer, ReportRenderer};
+pub use renderer::{ConsoleRenderer, FileRenderer, GitHubSummaryRenderer, JUnitXmlRenderer, ReportRenderer};
 pub use report::{ParityReport, ReportSummary, TaskResult};
 pub use suite::{ArtifactPolicy, DefaultSuiteSelector, SuiteDefinition, SuiteName, SuiteSelector};
