@@ -217,6 +217,52 @@ impl ApiClient {
             Err(ApiClientError::UnexpectedStatus(status))
         }
     }
+
+    pub async fn send_message(
+        &self,
+        session_id: &str,
+        content: &str,
+        context: Option<serde_json::Value>,
+    ) -> Result<MessageResponse, ApiClientError> {
+        let url = format!("{}/sessions/{}/messages", self.base_url, session_id);
+        let mut request = self.client.post(&url);
+
+        if let Some(token) = &self.auth_token {
+            request = request.bearer_auth(token);
+        }
+
+        let request_body = MessageContent {
+            content: content.to_string(),
+            context,
+        };
+
+        let response = request
+            .json(&request_body)
+            .send()
+            .await
+            .map_err(ApiClientError::Request)?;
+
+        let status = response.status();
+        if status.is_success() {
+            response
+                .json()
+                .await
+                .map_err(ApiClientError::Response)
+        } else if status.as_u16() == 400 {
+            Err(ApiClientError::BadRequest(
+                response
+                    .json()
+                    .await
+                    .map_err(ApiClientError::Response)?,
+            ))
+        } else if status.as_u16() == 404 {
+            Err(ApiClientError::NotFound)
+        } else if status.as_u16() == 401 {
+            Err(ApiClientError::Unauthorized)
+        } else {
+            Err(ApiClientError::UnexpectedStatus(status))
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

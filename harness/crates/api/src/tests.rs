@@ -278,14 +278,99 @@ mod tests {
 }
 
 #[cfg(test)]
-pub mod integration_tests {
-    use crate::client::ApiClient;
+    pub mod integration_tests {
+        use crate::client::ApiClient;
+        use crate::types::SessionConfig;
 
-    const TEST_BASE_URL: &str = "http://localhost:8080";
+        const TEST_BASE_URL: &str = "http://localhost:8080";
 
-    fn create_test_client() -> ApiClient {
-        ApiClient::new(TEST_BASE_URL)
-    }
+        fn create_test_client() -> ApiClient {
+            ApiClient::new(TEST_BASE_URL)
+        }
+
+        #[tokio::test]
+        #[ignore = "requires running API server"]
+        async fn smoke_api_008_send_message_returns_response() {
+            let client = create_test_client();
+
+            let config = SessionConfig {
+                project_id: Some("test-project".to_string()),
+                metadata: None,
+            };
+
+            let create_result = client.create_session(Some(config)).await;
+            assert!(create_result.is_ok(), "Session creation failed: {:?}", create_result);
+            let session_id = create_result.unwrap().session_id;
+
+            let result = client.send_message(&session_id, "Hello, world!", None).await;
+            assert!(result.is_ok(), "Expected send_message to succeed, got: {:?}", result);
+            let response = result.unwrap();
+            assert!(!response.message_id.is_empty(), "Expected non-empty message_id");
+            assert!(!response.response.is_empty(), "Expected non-empty response");
+
+            let _ = client.delete_session(&session_id).await;
+        }
+
+        #[tokio::test]
+        #[ignore = "requires running API server"]
+        async fn smoke_api_008_send_message_with_context_returns_response() {
+            let client = create_test_client();
+
+            let config = SessionConfig {
+                project_id: Some("test-project".to_string()),
+                metadata: None,
+            };
+
+            let create_result = client.create_session(Some(config)).await;
+            assert!(create_result.is_ok());
+            let session_id = create_result.unwrap().session_id;
+
+            let context = serde_json::json!({"key": "value"});
+            let result = client.send_message(&session_id, "Hello with context!", Some(context)).await;
+            assert!(result.is_ok(), "Expected send_message with context to succeed, got: {:?}", result);
+            let response = result.unwrap();
+            assert!(!response.message_id.is_empty());
+            assert!(!response.response.is_empty());
+
+            let _ = client.delete_session(&session_id).await;
+        }
+
+        #[tokio::test]
+        #[ignore = "requires running API server"]
+        async fn smoke_api_008_send_message_to_nonexistent_session_returns_404() {
+            let client = create_test_client();
+
+            let result = client.send_message("nonexistent-session-id", "Hello!", None).await;
+
+            match result {
+                Err(crate::client::ApiClientError::NotFound) => {},
+                other => panic!("Expected NotFound error, got: {:?}", other),
+            }
+        }
+
+        #[tokio::test]
+        #[ignore = "requires running API server"]
+        async fn smoke_api_008_send_empty_message_returns_400() {
+            let client = create_test_client();
+
+            let config = SessionConfig {
+                project_id: Some("test-project".to_string()),
+                metadata: None,
+            };
+
+            let create_result = client.create_session(Some(config)).await;
+            assert!(create_result.is_ok());
+            let session_id = create_result.unwrap().session_id;
+
+            let result = client.send_message(&session_id, "", None).await;
+
+            match result {
+                Err(crate::client::ApiClientError::BadRequest(_)) => {},
+                other => panic!("Expected BadRequest error for empty message, got: {:?}", other),
+            }
+
+            let _ = client.delete_session(&session_id).await;
+        }
 
     #[tokio::test]
     #[ignore = "requires running API server"]

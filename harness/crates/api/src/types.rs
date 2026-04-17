@@ -118,3 +118,16 @@ pub struct Project {
 pub struct ProjectListResponse {
     pub projects: Vec<Project>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageContent {
+    pub content: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageResponse {
+    pub message_id: String,
+    pub response: String,
+}

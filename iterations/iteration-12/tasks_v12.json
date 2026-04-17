@@ -398,7 +398,7 @@
       "priority": "P1",
       "title": "Message send via API",
       "description": "API endpoint to send a message to an active session",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddIntegrationTest: verify POST /sessions/{id}/messages sends message and returns response",
         "AddIntegrationTest: verify POST /sessions/{id}/messages with valid content returns message response",
