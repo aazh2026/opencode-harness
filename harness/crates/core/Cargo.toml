@@ -20,6 +20,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 tempfile = "3"
 walkdir = "2.5"
+git2 = "0.19"
 comparators = { path = "../../comparators" }
 
 [dev-dependencies]

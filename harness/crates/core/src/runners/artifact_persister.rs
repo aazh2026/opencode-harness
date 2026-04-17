@@ -665,6 +665,332 @@ pub struct FileTreeDiff {
     pub unchanged_count: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PatchLineType {
+    Context,
+    Addition,
+    Deletion,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PatchLine {
+    pub line_type: PatchLineType,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PatchHunk {
+    pub old_start: u32,
+    pub new_start: u32,
+    pub lines: Vec<PatchLine>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitPatch {
+    pub file_path: String,
+    pub hunks: Vec<PatchHunk>,
+    pub binary: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitDiff {
+    pub patches: Vec<GitPatch>,
+    pub total_additions: usize,
+    pub total_deletions: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitFileChange {
+    pub path: String,
+    pub old_mode: Option<String>,
+    pub new_mode: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitStatus {
+    pub is_clean: bool,
+    pub staged: Vec<GitFileChange>,
+    pub modified: Vec<GitFileChange>,
+    pub untracked: Vec<GitFileChange>,
+    pub conflicted: Vec<GitFileChange>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitSnapshot {
+    pub captured_at: DateTime<Utc>,
+    pub status: GitStatus,
+    pub diff: Option<GitDiff>,
+    pub branch: String,
+    pub commit_sha: Option<String>,
+}
+
+impl ArtifactPersister {
+    pub fn capture_git_status(&self, repo_path: &Path) -> Result<GitStatus> {
+        let repo = git2::Repository::discover(repo_path).map_err(|e| {
+            ErrorType::Runner(format!(
+                "Failed to discover git repository at '{}': {}",
+                repo_path.display(),
+                e
+            ))
+        })?;
+
+        let mut opts = git2::StatusOptions::new();
+        opts.include_untracked(true);
+        opts.recurse_untracked_dirs(true);
+
+        let statuses = repo
+            .statuses(Some(&mut opts))
+            .map_err(|e| ErrorType::Runner(format!("Failed to get git status: {}", e)))?;
+
+        let mut staged = Vec::new();
+        let mut modified = Vec::new();
+        let mut untracked = Vec::new();
+        let mut conflicted = Vec::new();
+
+        for entry in statuses.iter() {
+            let status = entry.status();
+            let path = entry.path().unwrap_or("").to_string();
+
+            if status.intersects(
+                git2::Status::INDEX_NEW
+                    | git2::Status::INDEX_MODIFIED
+                    | git2::Status::INDEX_DELETED
+                    | git2::Status::INDEX_RENAMED,
+            ) {
+                staged.push(GitFileChange {
+                    path: path.clone(),
+                    old_mode: None,
+                    new_mode: None,
+                });
+            }
+            if status.intersects(
+                git2::Status::WT_MODIFIED | git2::Status::WT_DELETED | git2::Status::WT_RENAMED,
+            ) {
+                modified.push(GitFileChange {
+                    path: path.clone(),
+                    old_mode: None,
+                    new_mode: None,
+                });
+            }
+            if status.intersects(git2::Status::WT_NEW) {
+                untracked.push(GitFileChange {
+                    path: path.clone(),
+                    old_mode: None,
+                    new_mode: None,
+                });
+            }
+            if status.intersects(git2::Status::CONFLICTED) {
+                conflicted.push(GitFileChange {
+                    path,
+                    old_mode: None,
+                    new_mode: None,
+                });
+            }
+        }
+
+        let is_clean = staged.is_empty()
+            && modified.is_empty()
+            && untracked.is_empty()
+            && conflicted.is_empty();
+
+        Ok(GitStatus {
+            is_clean,
+            staged,
+            modified,
+            untracked,
+            conflicted,
+        })
+    }
+
+    pub fn capture_git_diff(&self, repo_path: &Path) -> Result<GitDiff> {
+        let repo = git2::Repository::discover(repo_path).map_err(|e| {
+            ErrorType::Runner(format!(
+                "Failed to discover git repository at '{}': {}",
+                repo_path.display(),
+                e
+            ))
+        })?;
+
+        let mut opts = git2::DiffOptions::new();
+        opts.include_untracked(true);
+
+        let diff = repo
+            .diff_index_to_workdir(None, Some(&mut opts))
+            .map_err(|e| ErrorType::Runner(format!("Failed to get git diff: {}", e)))?;
+
+        let mut patches = Vec::new();
+        let mut total_additions = 0usize;
+        let mut total_deletions = 0usize;
+
+        diff.print(git2::DiffFormat::Patch, |delta, _hunk, line| {
+            let file_path = delta
+                .new_file()
+                .path()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| {
+                    delta
+                        .old_file()
+                        .path()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_default()
+                });
+
+            let binary = line.origin() == 'B';
+
+            if binary {
+                patches.push(GitPatch {
+                    file_path,
+                    hunks: Vec::new(),
+                    binary: true,
+                });
+                return true;
+            }
+
+            let patch_idx = patches.iter_mut().position(|p| p.file_path == file_path);
+
+            let patch = if let Some(idx) = patch_idx {
+                &mut patches[idx]
+            } else {
+                patches.push(GitPatch {
+                    file_path: file_path.clone(),
+                    hunks: Vec::new(),
+                    binary: false,
+                });
+                patches.last_mut().unwrap()
+            };
+
+            let line_type = match line.origin() {
+                '+' => {
+                    total_additions += 1;
+                    PatchLineType::Addition
+                }
+                '-' => {
+                    total_deletions += 1;
+                    PatchLineType::Deletion
+                }
+                ' ' => PatchLineType::Context,
+                _ => return true,
+            };
+
+            let content = std::str::from_utf8(line.content()).unwrap_or("");
+
+            let (old_start, new_start) = if let Some(hunk) = patch.hunks.last_mut() {
+                match line_type {
+                    PatchLineType::Addition => {
+                        hunk.new_start += 1;
+                    }
+                    PatchLineType::Deletion => {
+                        hunk.old_start += 1;
+                    }
+                    PatchLineType::Context => {
+                        hunk.old_start += 1;
+                        hunk.new_start += 1;
+                    }
+                }
+                (hunk.old_start, hunk.new_start)
+            } else {
+                (
+                    line.new_lineno().unwrap_or(1),
+                    line.old_lineno().unwrap_or(1),
+                )
+            };
+
+            if patch.hunks.is_empty()
+                || line.origin() == '+'
+                || line.origin() == '-'
+                || line.origin() == ' '
+            {
+                let should_create_hunk = if let Some(last_hunk) = patch.hunks.last() {
+                    let last_end = last_hunk.old_start + last_hunk.lines.len() as u32;
+                    line.old_lineno().map(|ln| ln > last_end).unwrap_or(false)
+                } else {
+                    true
+                };
+
+                if should_create_hunk {
+                    patch.hunks.push(PatchHunk {
+                        old_start,
+                        new_start,
+                        lines: Vec::new(),
+                    });
+                }
+            }
+
+            if let Some(hunk) = patch.hunks.last_mut() {
+                hunk.lines.push(PatchLine {
+                    line_type,
+                    content: content.to_string(),
+                });
+            }
+
+            true
+        })
+        .map_err(|e| ErrorType::Runner(format!("Failed to print git diff: {}", e)))?;
+
+        Ok(GitDiff {
+            patches,
+            total_additions,
+            total_deletions,
+        })
+    }
+
+    pub fn generate_patch(&self, before: &FileTreeSnapshot, after: &FileTreeSnapshot) -> String {
+        let diff = self.diff_file_trees(before, after);
+        let mut patch_lines = Vec::new();
+
+        for added in &diff.added {
+            patch_lines.push(format!("+ {}", added.display()));
+        }
+
+        for removed in &diff.removed {
+            patch_lines.push(format!("- {}", removed.display()));
+        }
+
+        for modified in &diff.modified {
+            patch_lines.push(format!("~ {}", modified.display()));
+        }
+
+        if patch_lines.is_empty() {
+            "No changes".to_string()
+        } else {
+            patch_lines.join("\n")
+        }
+    }
+
+    pub fn capture_git_snapshot(&self, repo_path: &Path) -> Result<GitSnapshot> {
+        let status = self.capture_git_status(repo_path)?;
+        let diff = self.capture_git_diff(repo_path)?;
+
+        let repo = git2::Repository::discover(repo_path).map_err(|e| {
+            ErrorType::Runner(format!(
+                "Failed to discover git repository at '{}': {}",
+                repo_path.display(),
+                e
+            ))
+        })?;
+
+        let branch = repo
+            .head()
+            .ok()
+            .and_then(|h| h.shorthand().map(String::from))
+            .unwrap_or_else(|| "HEAD".to_string());
+
+        let commit_sha = repo
+            .head()
+            .ok()
+            .and_then(|h| h.peel_to_commit().ok())
+            .map(|c| c.id().to_string());
+
+        Ok(GitSnapshot {
+            captured_at: Utc::now(),
+            status,
+            diff: Some(diff),
+            branch,
+            commit_sha,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -962,5 +1288,271 @@ mod tests {
         assert_eq!(diff.removed, vec![PathBuf::from("file2.txt")]);
         assert_eq!(diff.modified, vec![PathBuf::from("file1.txt")]);
         assert_eq!(diff.unchanged_count, 1);
+    }
+
+    #[test]
+    fn test_patch_line_type_enum_variants() {
+        assert_eq!(PatchLineType::Context, PatchLineType::Context);
+        assert_eq!(PatchLineType::Addition, PatchLineType::Addition);
+        assert_eq!(PatchLineType::Deletion, PatchLineType::Deletion);
+        assert_ne!(PatchLineType::Addition, PatchLineType::Deletion);
+        assert_ne!(PatchLineType::Context, PatchLineType::Addition);
+    }
+
+    #[test]
+    fn test_patch_line_struct_captures_fields() {
+        let line = PatchLine {
+            line_type: PatchLineType::Addition,
+            content: "+ Hello, world!".to_string(),
+        };
+
+        assert_eq!(line.line_type, PatchLineType::Addition);
+        assert_eq!(line.content, "+ Hello, world!");
+    }
+
+    #[test]
+    fn test_patch_hunk_struct_captures_fields() {
+        let lines = vec![
+            PatchLine {
+                line_type: PatchLineType::Context,
+                content: " unchanged line".to_string(),
+            },
+            PatchLine {
+                line_type: PatchLineType::Addition,
+                content: "+ added line".to_string(),
+            },
+            PatchLine {
+                line_type: PatchLineType::Deletion,
+                content: "- removed line".to_string(),
+            },
+        ];
+
+        let hunk = PatchHunk {
+            old_start: 10,
+            new_start: 12,
+            lines,
+        };
+
+        assert_eq!(hunk.old_start, 10);
+        assert_eq!(hunk.new_start, 12);
+        assert_eq!(hunk.lines.len(), 3);
+        assert_eq!(hunk.lines[0].line_type, PatchLineType::Context);
+        assert_eq!(hunk.lines[1].line_type, PatchLineType::Addition);
+        assert_eq!(hunk.lines[2].line_type, PatchLineType::Deletion);
+    }
+
+    #[test]
+    fn test_git_patch_struct_captures_fields() {
+        let hunks = vec![PatchHunk {
+            old_start: 1,
+            new_start: 1,
+            lines: vec![PatchLine {
+                line_type: PatchLineType::Context,
+                content: " context".to_string(),
+            }],
+        }];
+
+        let patch = GitPatch {
+            file_path: "src/main.rs".to_string(),
+            hunks: hunks.clone(),
+            binary: false,
+        };
+
+        assert_eq!(patch.file_path, "src/main.rs");
+        assert_eq!(patch.hunks.len(), 1);
+        assert!(!patch.binary);
+
+        let binary_patch = GitPatch {
+            file_path: "binary.png".to_string(),
+            hunks: Vec::new(),
+            binary: true,
+        };
+
+        assert!(binary_patch.binary);
+    }
+
+    #[test]
+    fn test_git_diff_aggregates_patches() {
+        let diff = GitDiff {
+            patches: vec![
+                GitPatch {
+                    file_path: "file1.txt".to_string(),
+                    hunks: Vec::new(),
+                    binary: false,
+                },
+                GitPatch {
+                    file_path: "file2.txt".to_string(),
+                    hunks: Vec::new(),
+                    binary: false,
+                },
+            ],
+            total_additions: 15,
+            total_deletions: 8,
+        };
+
+        assert_eq!(diff.patches.len(), 2);
+        assert_eq!(diff.total_additions, 15);
+        assert_eq!(diff.total_deletions, 8);
+    }
+
+    #[test]
+    fn test_git_file_change_captures_path_and_mode() {
+        let change = GitFileChange {
+            path: "src/lib.rs".to_string(),
+            old_mode: Some("100644".to_string()),
+            new_mode: Some("100755".to_string()),
+        };
+
+        assert_eq!(change.path, "src/lib.rs");
+        assert_eq!(change.old_mode, Some("100644".to_string()));
+        assert_eq!(change.new_mode, Some("100755".to_string()));
+
+        let new_file = GitFileChange {
+            path: "new.txt".to_string(),
+            old_mode: None,
+            new_mode: Some("100644".to_string()),
+        };
+
+        assert_eq!(new_file.old_mode, None);
+        assert_eq!(new_file.new_mode, Some("100644".to_string()));
+    }
+
+    #[test]
+    fn test_git_status_identifies_clean_and_categorizes_changes() {
+        let clean_status = GitStatus {
+            is_clean: true,
+            staged: Vec::new(),
+            modified: Vec::new(),
+            untracked: Vec::new(),
+            conflicted: Vec::new(),
+        };
+
+        assert!(clean_status.is_clean);
+        assert!(clean_status.staged.is_empty());
+        assert!(clean_status.modified.is_empty());
+
+        let dirty_status = GitStatus {
+            is_clean: false,
+            staged: vec![GitFileChange {
+                path: "staged.txt".to_string(),
+                old_mode: None,
+                new_mode: Some("100644".to_string()),
+            }],
+            modified: vec![GitFileChange {
+                path: "modified.txt".to_string(),
+                old_mode: Some("100644".to_string()),
+                new_mode: Some("100644".to_string()),
+            }],
+            untracked: vec![GitFileChange {
+                path: "untracked.txt".to_string(),
+                old_mode: None,
+                new_mode: None,
+            }],
+            conflicted: Vec::new(),
+        };
+
+        assert!(!dirty_status.is_clean);
+        assert_eq!(dirty_status.staged.len(), 1);
+        assert_eq!(dirty_status.modified.len(), 1);
+        assert_eq!(dirty_status.untracked.len(), 1);
+        assert_eq!(dirty_status.conflicted.len(), 0);
+    }
+
+    #[test]
+    fn test_git_snapshot_captures_timestamp_status_branch_commit() {
+        let status = GitStatus {
+            is_clean: true,
+            staged: Vec::new(),
+            modified: Vec::new(),
+            untracked: Vec::new(),
+            conflicted: Vec::new(),
+        };
+
+        let diff = GitDiff {
+            patches: Vec::new(),
+            total_additions: 0,
+            total_deletions: 0,
+        };
+
+        let snapshot = GitSnapshot {
+            captured_at: Utc::now(),
+            status: status.clone(),
+            diff: Some(diff.clone()),
+            branch: "main".to_string(),
+            commit_sha: Some("abc123".to_string()),
+        };
+
+        assert_eq!(snapshot.branch, "main");
+        assert_eq!(snapshot.commit_sha, Some("abc123".to_string()));
+        assert!(snapshot.status.is_clean);
+        assert!(snapshot.diff.is_some());
+        assert_eq!(snapshot.diff.unwrap().patches.len(), 0);
+    }
+
+    #[test]
+    fn test_generate_patch_from_file_tree_diff() {
+        let before = FileTreeSnapshot {
+            root_path: PathBuf::from("/test"),
+            captured_at: Utc::now(),
+            entries: vec![FileTreeEntry {
+                path: PathBuf::from("old.txt"),
+                entry_type: FileTreeEntryType::File,
+                size_bytes: Some(100),
+                permissions: "644".to_string(),
+                modified_at: Some(Utc::now()),
+            }],
+            total_files: 1,
+            total_dirs: 0,
+        };
+
+        let after = FileTreeSnapshot {
+            root_path: PathBuf::from("/test"),
+            captured_at: Utc::now(),
+            entries: vec![FileTreeEntry {
+                path: PathBuf::from("new.txt"),
+                entry_type: FileTreeEntryType::File,
+                size_bytes: Some(200),
+                permissions: "644".to_string(),
+                modified_at: Some(Utc::now()),
+            }],
+            total_files: 1,
+            total_dirs: 0,
+        };
+
+        let persister = ArtifactPersister::new("patch-test", PathBuf::from("/tmp"));
+        let patch = persister.generate_patch(&before, &after);
+
+        assert!(patch.contains("- old.txt"));
+        assert!(patch.contains("+ new.txt"));
+    }
+
+    #[test]
+    fn test_capture_git_status_from_repository() {
+        let temp_dir = TempDir::new().unwrap();
+        let persister = ArtifactPersister::new("git-status-test", temp_dir.path());
+
+        git2::Repository::init(temp_dir.path()).unwrap();
+
+        let result = persister.capture_git_status(temp_dir.path());
+        assert!(result.is_ok());
+
+        let status = result.unwrap();
+        assert!(status.is_clean || !status.is_clean);
+    }
+
+    #[test]
+    fn test_capture_git_diff_from_repository() {
+        let temp_dir = TempDir::new().unwrap();
+        let persister = ArtifactPersister::new("git-diff-test", temp_dir.path());
+
+        git2::Repository::init(temp_dir.path()).unwrap();
+
+        let result = persister.capture_git_diff(temp_dir.path());
+        assert!(result.is_ok());
+
+        let diff = result.unwrap();
+        assert_eq!(diff.patches.len(), 0);
+        assert_eq!(diff.total_additions, 0);
+        assert_eq!(diff.total_deletions, 0);
     }
 }
