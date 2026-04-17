@@ -1,0 +1,36 @@
+id: SMOKE-API-006
+title: API session resume resumes existing session with valid session_id
+category: smoke
+fixture_project: fixtures/projects/api-project
+description: Verify that opencode API session resume endpoint resumes an existing session with valid session_id
+expected_outcome: API session resume returns session resumed confirmation
+preconditions:
+  - opencode API server running
+  - existing session with valid session_id
+entry_mode: API
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - api
+    - session
+    - resume
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "resumed"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Critical
+tags:
+  - smoke
+  - api
+  - session
+  - resume
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

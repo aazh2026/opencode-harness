@@ -1,0 +1,35 @@
+id: SMOKE-API-009
+title: API event subscribe establishes event subscription and receives events
+category: smoke
+fixture_project: fixtures/projects/api-project
+description: Verify that opencode API event subscribe endpoint establishes event subscription and receives events
+expected_outcome: API event subscribe establishes subscription and receives events
+preconditions:
+  - opencode API server running
+entry_mode: API
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - api
+    - events
+    - subscribe
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "event"
+allowed_variance:
+  exit_code:
+    - 0
+severity: High
+tags:
+  - smoke
+  - api
+  - events
+  - subscribe
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

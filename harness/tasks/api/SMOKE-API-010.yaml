@@ -1,0 +1,35 @@
+id: SMOKE-API-010
+title: API tool list returns list of registered tools
+category: smoke
+fixture_project: fixtures/projects/api-project
+description: Verify that opencode API tool list endpoint returns list of registered tools
+expected_outcome: API tool list returns list of tools
+preconditions:
+  - opencode API server running
+entry_mode: API
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - api
+    - tools
+    - list
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "tools"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Medium
+tags:
+  - smoke
+  - api
+  - tools
+  - list
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

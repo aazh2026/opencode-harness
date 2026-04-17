@@ -1,0 +1,35 @@
+id: SMOKE-API-008
+title: API message send sends message and receives response
+category: smoke
+fixture_project: fixtures/projects/api-project
+description: Verify that opencode API message send endpoint sends message and receives response
+expected_outcome: API message send returns response
+preconditions:
+  - opencode API server running
+entry_mode: API
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - api
+    - message
+    - send
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "response"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Critical
+tags:
+  - smoke
+  - api
+  - message
+  - send
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

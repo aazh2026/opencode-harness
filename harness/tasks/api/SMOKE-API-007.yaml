@@ -1,0 +1,35 @@
+id: SMOKE-API-007
+title: API project list returns list of accessible projects
+category: smoke
+fixture_project: fixtures/projects/api-project
+description: Verify that opencode API project list endpoint returns list of accessible projects
+expected_outcome: API project list returns list of projects
+preconditions:
+  - opencode API server running
+entry_mode: API
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - api
+    - projects
+    - list
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "projects"
+allowed_variance:
+  exit_code:
+    - 0
+severity: High
+tags:
+  - smoke
+  - api
+  - projects
+  - list
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

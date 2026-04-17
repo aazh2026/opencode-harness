@@ -1,0 +1,35 @@
+id: SMOKE-API-005
+title: API session create creates new session and returns session_id
+category: smoke
+fixture_project: fixtures/projects/api-project
+description: Verify that opencode API session create endpoint creates a new session and returns session_id
+expected_outcome: API session create returns session_id in response
+preconditions:
+  - opencode API server running
+entry_mode: API
+agent_mode: Batch
+provider_mode: Both
+input:
+  command: opencode
+  args:
+    - api
+    - session
+    - create
+  cwd: /project
+expected_assertions:
+  - type: exit_code_equals
+    value: 0
+  - type: stdout_contains
+    value: "session_id"
+allowed_variance:
+  exit_code:
+    - 0
+severity: Critical
+tags:
+  - smoke
+  - api
+  - session
+  - create
+execution_policy: ManualCheck
+timeout_seconds: 30
+on_missing_dependency: Blocked

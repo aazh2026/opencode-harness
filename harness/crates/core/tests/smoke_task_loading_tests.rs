@@ -524,7 +524,7 @@ mod smoke_api_tests {
             .load_from_dir(&get_api_tasks_dir())
             .expect("Should be able to load API tasks directory");
 
-        let expected_count = 4;
+        let expected_count = 10;
         assert_eq!(
             tasks.len(),
             expected_count,
@@ -565,8 +565,8 @@ mod smoke_task_loading_integration_tests {
             + api_tasks.len();
 
         assert_eq!(
-            total_smoke_tasks, 23,
-            "Expected 23 total smoke tasks (6 CLI + 5 WS + 4 SESSION + 4 PERM + 4 API), got {}",
+            total_smoke_tasks, 29,
+            "Expected 29 total smoke tasks (6 CLI + 5 WS + 4 SESSION + 4 PERM + 10 API), got {}",
             total_smoke_tasks
         );
     }
