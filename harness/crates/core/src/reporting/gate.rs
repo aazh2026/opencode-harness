@@ -192,16 +192,19 @@ pub struct GateConfig {
 }
 
 impl GateConfig {
-    /// Creates a new gate config with default settings for the given level.
+    /// Creates a new gate config, loading thresholds from config file.
+    /// Falls back to hardcoded defaults if config cannot be loaded.
     pub fn new(level: GateLevel) -> Self {
-        Self {
-            level,
-            pass_rate_threshold: level.pass_rate_threshold(),
-            max_blockers: level.max_blockers(),
-            max_warnings: level.max_warnings(),
-            max_timeout_ms: None,
-            error_rate_threshold: 0.1,
-        }
+        AppConfig::load()
+            .map(|config| Self::from_app_config(level, &config))
+            .unwrap_or_else(|_| Self {
+                level,
+                pass_rate_threshold: level.pass_rate_threshold(),
+                max_blockers: level.max_blockers(),
+                max_warnings: level.max_warnings(),
+                max_timeout_ms: None,
+                error_rate_threshold: 0.1,
+            })
     }
 
     /// Creates a PR gate configuration.

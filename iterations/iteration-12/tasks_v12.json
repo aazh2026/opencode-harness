@@ -148,7 +148,7 @@
       "priority": "P2",
       "title": "Externalize configuration",
       "description": "Move hardcoded thresholds (pass_rate, timeouts) to config files. Create config schema and loading mechanism.",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddRegressionTest: ensure pass_rate threshold is read from config file instead of hardcoded",
         "AddRegressionTest: ensure timeout values are read from config file instead of hardcoded",

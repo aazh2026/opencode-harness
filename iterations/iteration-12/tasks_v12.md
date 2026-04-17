@@ -151,7 +151,7 @@
 | Module | config |
 | Priority | P2 |
 | Estimated Time | 1 day |
-| Status | Not Started |
+| Status | ✅ Done |
 
 ---
 
