@@ -131,3 +131,31 @@ pub struct MessageResponse {
     pub message_id: String,
     pub response: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventSubscriptionRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event_types: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventSubscription {
+    pub subscription_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event_types: Option<Vec<String>>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Event {
+    pub event_type: String,
+    pub timestamp: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subscription_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+}

@@ -263,6 +263,114 @@ impl ApiClient {
             Err(ApiClientError::UnexpectedStatus(status))
         }
     }
+
+    pub async fn subscribe_events(
+        &self,
+        event_types: Option<Vec<String>>,
+    ) -> Result<EventSubscription, ApiClientError> {
+        let url = format!("{}/events/subscribe", self.base_url);
+        let mut request = self.client.post(&url);
+
+        if let Some(token) = &self.auth_token {
+            request = request.bearer_auth(token);
+        }
+
+        let request_body = EventSubscriptionRequest { event_types };
+
+        let response = request
+            .json(&request_body)
+            .send()
+            .await
+            .map_err(ApiClientError::Request)?;
+
+        let status = response.status();
+        if status.is_success() {
+            response
+                .json()
+                .await
+                .map_err(ApiClientError::Response)
+        } else if status.as_u16() == 400 {
+            Err(ApiClientError::BadRequest(
+                response
+                    .json()
+                    .await
+                    .map_err(ApiClientError::Response)?,
+            ))
+        } else if status.as_u16() == 401 {
+            Err(ApiClientError::Unauthorized)
+        } else {
+            Err(ApiClientError::UnexpectedStatus(status))
+        }
+    }
+
+    pub async fn get_events(
+        &self,
+        subscription_id: &str,
+    ) -> Result<Vec<Event>, ApiClientError> {
+        let url = format!("{}/events/{}", self.base_url, subscription_id);
+        let mut request = self.client.get(&url);
+
+        if let Some(token) = &self.auth_token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request
+            .send()
+            .await
+            .map_err(ApiClientError::Request)?;
+
+        let status = response.status();
+        if status.is_success() {
+            #[derive(Deserialize)]
+            struct EventsResponse { events: Vec<Event> }
+            let result: EventsResponse = response
+                .json()
+                .await
+                .map_err(ApiClientError::Response)?;
+            Ok(result.events)
+        } else if status.as_u16() == 400 {
+            Err(ApiClientError::BadRequest(
+                response
+                    .json()
+                    .await
+                    .map_err(ApiClientError::Response)?,
+            ))
+        } else if status.as_u16() == 404 {
+            Err(ApiClientError::NotFound)
+        } else if status.as_u16() == 401 {
+            Err(ApiClientError::Unauthorized)
+        } else {
+            Err(ApiClientError::UnexpectedStatus(status))
+        }
+    }
+
+    pub async fn delete_subscription(
+        &self,
+        subscription_id: &str,
+    ) -> Result<(), ApiClientError> {
+        let url = format!("{}/events/subscribe/{}", self.base_url, subscription_id);
+        let mut request = self.client.delete(&url);
+
+        if let Some(token) = &self.auth_token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request
+            .send()
+            .await
+            .map_err(ApiClientError::Request)?;
+
+        let status = response.status();
+        if status.is_success() || status.as_u16() == 204 {
+            Ok(())
+        } else if status.as_u16() == 404 {
+            Err(ApiClientError::NotFound)
+        } else if status.as_u16() == 401 {
+            Err(ApiClientError::Unauthorized)
+        } else {
+            Err(ApiClientError::UnexpectedStatus(status))
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

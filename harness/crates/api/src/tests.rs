@@ -443,3 +443,166 @@ mod tests {
         assert!(true);
     }
 }
+
+#[cfg(test)]
+mod smoke_api_009_tests {
+    use crate::client::ApiClient;
+
+    const TEST_BASE_URL: &str = "http://localhost:8080";
+
+    fn create_test_client() -> ApiClient {
+        ApiClient::new(TEST_BASE_URL)
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_009_subscribe_creates_event_subscription() {
+        let client = create_test_client();
+
+        let result = client.subscribe_events(None).await;
+
+        assert!(result.is_ok(), "Expected subscribe_events to succeed, got: {:?}", result);
+        let subscription = result.unwrap();
+        assert!(
+            !subscription.subscription_id.is_empty(),
+            "Expected non-empty subscription_id, got: {}",
+            subscription.subscription_id
+        );
+        assert!(
+            uuid::Uuid::parse_str(&subscription.subscription_id).is_ok(),
+            "Expected valid UUID for subscription_id, got: {}",
+            subscription.subscription_id
+        );
+
+        let _ = client.delete_subscription(&subscription.subscription_id).await;
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_009_subscribe_with_event_types_returns_subscription_id() {
+        let client = create_test_client();
+
+        let event_types = vec!["session.created".to_string(), "message.received".to_string()];
+        let result = client.subscribe_events(Some(event_types.clone())).await;
+
+        assert!(result.is_ok(), "Expected subscribe_events with event_types to succeed, got: {:?}", result);
+        let subscription = result.unwrap();
+        assert!(
+            !subscription.subscription_id.is_empty(),
+            "Expected non-empty subscription_id"
+        );
+        assert!(
+            subscription.event_types.is_some(),
+            "Expected event_types to be set"
+        );
+        let returned_types = subscription.event_types.unwrap();
+        assert_eq!(
+            returned_types.len(),
+            event_types.len(),
+            "Expected {} event_types, got: {:?}",
+            event_types.len(),
+            returned_types
+        );
+
+        let _ = client.delete_subscription(&subscription.subscription_id).await;
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_009_get_events_receives_events() {
+        let client = create_test_client();
+
+        let subscribe_result = client.subscribe_events(None).await;
+        assert!(subscribe_result.is_ok(), "Subscription creation failed: {:?}", subscribe_result);
+        let subscription_id = subscribe_result.unwrap().subscription_id;
+
+        let events_result = client.get_events(&subscription_id).await;
+        assert!(events_result.is_ok(), "Expected get_events to succeed, got: {:?}", events_result);
+        let events = events_result.unwrap();
+        assert!(
+            events.iter().all(|e| !e.event_type.is_empty()),
+            "Expected all events to have non-empty event_type"
+        );
+
+        let _ = client.delete_subscription(&subscription_id).await;
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_009_subscribe_with_invalid_event_types_returns_400() {
+        let client = create_test_client();
+
+        let invalid_event_types = vec!["invalid.event.type".to_string()];
+        let result = client.subscribe_events(Some(invalid_event_types)).await;
+
+        match result {
+            Err(crate::client::ApiClientError::BadRequest(_)) => {},
+            other => panic!("Expected BadRequest error for invalid event_types, got: {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_009_subscription_lifecycle() {
+        let client = create_test_client();
+
+        let subscribe_result = client.subscribe_events(None).await;
+        assert!(subscribe_result.is_ok(), "Subscription creation failed: {:?}", subscribe_result);
+        let subscription_id = subscribe_result.unwrap().subscription_id;
+
+        let get_result = client.get_events(&subscription_id).await;
+        assert!(get_result.is_ok(), "Get events failed: {:?}", get_result);
+
+        let delete_result = client.delete_subscription(&subscription_id).await;
+        assert!(delete_result.is_ok(), "Delete subscription failed: {:?}", delete_result);
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_009_get_nonexistent_subscription_returns_404() {
+        let client = create_test_client();
+
+        let result = client.get_events("nonexistent-subscription-id").await;
+
+        match result {
+            Err(crate::client::ApiClientError::NotFound) => {},
+            other => panic!("Expected NotFound error, got: {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_009_delete_nonexistent_subscription_returns_404() {
+        let client = create_test_client();
+
+        let result = client.delete_subscription("nonexistent-subscription-id").await;
+
+        match result {
+            Err(crate::client::ApiClientError::NotFound) => {},
+            other => panic!("Expected NotFound error, got: {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_009_subscription_created_at_is_valid_timestamp() {
+        let client = create_test_client();
+
+        let result = client.subscribe_events(None).await;
+        assert!(result.is_ok());
+
+        let subscription = result.unwrap();
+        let created_at = subscription.created_at;
+
+        let now = chrono::Utc::now();
+        let diff = now.signed_duration_since(created_at);
+        assert!(
+            diff.num_seconds() >= 0 && diff.num_seconds() < 5,
+            "created_at should be within 5 seconds of now, got: {}, now: {}",
+            created_at,
+            now
+        );
+
+        let _ = client.delete_subscription(&subscription.subscription_id).await;
+    }
+}

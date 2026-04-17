@@ -398,7 +398,7 @@
       "priority": "P1",
       "title": "Message send via API",
       "description": "API endpoint to send a message to an active session",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify POST /sessions/{id}/messages sends message and returns response",
         "AddIntegrationTest: verify POST /sessions/{id}/messages with valid content returns message response",
@@ -419,7 +419,7 @@
       "priority": "P1",
       "title": "Event subscribe via API",
       "description": "API endpoint to subscribe to server-side events",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddIntegrationTest: verify POST /events/subscribe creates event subscription",
         "AddIntegrationTest: verify POST /events/subscribe with event_types returns subscription_id",
