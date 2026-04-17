@@ -5,6 +5,9 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[package.metadata.deprecated]
+message = "This crate is deprecated. Use opencode-core crate runners module instead (harness/crates/core/src/runners/). All functionality has been consolidated there."
+
 [dependencies]
 core = { package = "opencode-core", path = "../crates/core" }
 thiserror = { workspace = true }

@@ -737,7 +737,6 @@ name = "verifiers"
 version = "0.1.0"
 dependencies = [
  "opencode-core",
- "runners",
  "serde",
  "serde_json",
  "thiserror",

@@ -7,6 +7,7 @@ pub mod capture_options;
 pub mod entry_mode;
 pub mod environment;
 pub mod execution_policy;
+pub mod execution_result;
 pub mod failure_classification;
 pub mod fixture;
 pub mod on_missing_dependency;
@@ -33,6 +34,7 @@ pub use capture_options::CaptureOptions;
 pub use entry_mode::EntryMode;
 pub use environment::{DefaultEnvironmentProbe, EnvironmentInfo, EnvironmentProbe};
 pub use execution_policy::ExecutionPolicy;
+pub use execution_result::ExecutionResult;
 pub use failure_classification::FailureClassification;
 pub use fixture::{
     ConfigFormat, FixtureConfig, FixtureFile, FixtureProject, ResetStrategy, Transcript,

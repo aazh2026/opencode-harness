@@ -1,4 +1,4 @@
-use runners::ExecutionResult;
+use core::types::ExecutionResult;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
