@@ -6,7 +6,7 @@ use super::capture_options::CaptureOptions;
 use super::provider_mode::ProviderMode;
 use super::task::Task;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RunnerInput {
     pub task: Task,
     pub prepared_workspace_path: PathBuf,

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CaptureOptions {
     pub capture_stdout: bool,
     pub capture_stderr: bool,
@@ -10,6 +10,7 @@ pub struct CaptureOptions {
     pub capture_environment: bool,
     pub max_output_size_bytes: Option<usize>,
     pub artifact_filter: Option<Vec<PathBuf>>,
+    pub timing_tolerance: Option<f64>,
 }
 
 impl Default for CaptureOptions {
@@ -22,6 +23,7 @@ impl Default for CaptureOptions {
             capture_environment: true,
             max_output_size_bytes: None,
             artifact_filter: None,
+            timing_tolerance: None,
         }
     }
 }
@@ -65,6 +67,11 @@ impl CaptureOptions {
         self.artifact_filter = artifact_filter;
         self
     }
+
+    pub fn with_timing_tolerance(mut self, timing_tolerance: Option<f64>) -> Self {
+        self.timing_tolerance = timing_tolerance;
+        self
+    }
 }
 
 #[cfg(test)]
@@ -81,6 +88,7 @@ mod tests {
         assert!(options.capture_environment);
         assert!(options.max_output_size_bytes.is_none());
         assert!(options.artifact_filter.is_none());
+        assert!(options.timing_tolerance.is_none());
     }
 
     #[test]
@@ -123,5 +131,48 @@ mod tests {
         let json = serde_json::to_string(&options).expect("serialization should succeed");
         assert!(json.contains("\"capture_stdout\":true"));
         assert!(json.contains("\"capture_stderr\":true"));
+    }
+
+    #[test]
+    fn test_capture_options_timing_tolerance_default() {
+        let options = CaptureOptions::new();
+        assert!(options.timing_tolerance.is_none());
+    }
+
+    #[test]
+    fn test_capture_options_timing_tolerance_builder() {
+        let options = CaptureOptions::new().with_timing_tolerance(Some(0.5));
+        assert_eq!(options.timing_tolerance, Some(0.5));
+    }
+
+    #[test]
+    fn test_capture_options_timing_tolerance_builder_with_none() {
+        let options = CaptureOptions::new().with_timing_tolerance(None);
+        assert!(options.timing_tolerance.is_none());
+    }
+
+    #[test]
+    fn test_capture_options_timing_tolerance_various_values() {
+        let options_025 = CaptureOptions::new().with_timing_tolerance(Some(0.25));
+        let options_050 = CaptureOptions::new().with_timing_tolerance(Some(0.50));
+        let options_075 = CaptureOptions::new().with_timing_tolerance(Some(0.75));
+        let options_100 = CaptureOptions::new().with_timing_tolerance(Some(1.0));
+
+        assert_eq!(options_025.timing_tolerance, Some(0.25));
+        assert_eq!(options_050.timing_tolerance, Some(0.50));
+        assert_eq!(options_075.timing_tolerance, Some(0.75));
+        assert_eq!(options_100.timing_tolerance, Some(1.0));
+    }
+
+    #[test]
+    fn test_capture_options_timing_tolerance_serde_roundtrip() {
+        let options = CaptureOptions::new().with_timing_tolerance(Some(0.3));
+
+        let serialized = serde_json::to_string(&options).expect("serialization should succeed");
+        let deserialized: CaptureOptions =
+            serde_json::from_str(&serialized).expect("deserialization should succeed");
+
+        assert_eq!(options, deserialized);
+        assert_eq!(deserialized.timing_tolerance, Some(0.3));
     }
 }

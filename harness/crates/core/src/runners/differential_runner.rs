@@ -34,7 +34,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
         let legacy_result = legacy_runner.execute(input);
         let rust_result = rust_runner.execute(input);
 
-        let verdict = self.determine_verdict_from_outputs(&legacy_result, &rust_result);
+        let verdict = self.determine_verdict_from_outputs(&legacy_result, &rust_result, input);
 
         let duration_ms = start.elapsed().as_millis() as u64;
 
@@ -168,6 +168,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
         &self,
         legacy_result: &Result<RunnerOutput>,
         rust_result: &Result<RunnerOutput>,
+        input: &RunnerInput,
     ) -> ParityVerdict {
         let (lr, rr) = match (legacy_result, rust_result) {
             (Ok(l), Ok(r)) => (l, r),
@@ -194,7 +195,8 @@ impl<L: TaskLoader> DifferentialRunner<L> {
 
         let timing_diff = (lr.duration_ms as i64 - rr.duration_ms as i64).unsigned_abs();
         let max_duration = lr.duration_ms.max(rr.duration_ms);
-        if max_duration > 0 && timing_diff > max_duration / 2 {
+        let timing_tolerance = input.capture_options.timing_tolerance.unwrap_or(0.5);
+        if max_duration > 0 && timing_diff as f64 > max_duration as f64 * timing_tolerance {
             return ParityVerdict::Different {
                 category: DiffCategory::Timing,
             };
@@ -703,5 +705,111 @@ on_missing_dependency: Fail
             result_with_failure.failure_kind = Some(variant);
             assert_eq!(result_with_failure.failure_kind, Some(variant));
         }
+    }
+
+    #[test]
+    fn test_timing_tolerance_is_configurable_via_capture_options() {
+        let options_default = CaptureOptions::new();
+        assert!(options_default.timing_tolerance.is_none());
+
+        let options_with_tolerance = CaptureOptions::new().with_timing_tolerance(Some(0.5));
+        assert_eq!(options_with_tolerance.timing_tolerance, Some(0.5));
+
+        let options_with_tolerance_025 = CaptureOptions::new().with_timing_tolerance(Some(0.25));
+        assert_eq!(options_with_tolerance_025.timing_tolerance, Some(0.25));
+    }
+
+    #[test]
+    fn test_differential_runner_uses_timing_tolerance_from_capture_options() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+
+        let options_with_tolerance = CaptureOptions::new().with_timing_tolerance(Some(0.5));
+
+        let mut task = create_test_task();
+        let input = RunnerInput::new(
+            task,
+            std::path::PathBuf::from("/tmp"),
+            HashMap::new(),
+            60,
+            None,
+            ProviderMode::Both,
+            options_with_tolerance,
+        );
+
+        assert!(input.capture_options.timing_tolerance.is_some());
+        assert_eq!(input.capture_options.timing_tolerance, Some(0.5));
+    }
+
+    #[test]
+    fn test_timing_tolerance_various_values() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+
+        let test_cases = vec![
+            (0.1, "10% tolerance"),
+            (0.25, "25% tolerance"),
+            (0.5, "50% tolerance (default)"),
+            (0.75, "75% tolerance"),
+            (1.0, "100% tolerance"),
+        ];
+
+        for (tolerance, description) in test_cases {
+            let options = CaptureOptions::new().with_timing_tolerance(Some(tolerance));
+
+            let mut task = create_test_task();
+            let input = RunnerInput::new(
+                task,
+                std::path::PathBuf::from("/tmp"),
+                HashMap::new(),
+                60,
+                None,
+                ProviderMode::Both,
+                options,
+            );
+
+            assert_eq!(
+                input.capture_options.timing_tolerance,
+                Some(tolerance),
+                "Tolerance {} should be configurable: {}",
+                tolerance,
+                description
+            );
+        }
+    }
+
+    #[test]
+    fn test_timing_tolerance_default_is_none_uses_half_max_duration() {
+        let loader = DefaultTaskLoader::new();
+        let runner = DifferentialRunner::new(loader);
+
+        let options_default = CaptureOptions::new();
+        assert!(options_default.timing_tolerance.is_none());
+
+        let mut task = create_test_task();
+        let input = RunnerInput::new(
+            task,
+            std::path::PathBuf::from("/tmp"),
+            HashMap::new(),
+            60,
+            None,
+            ProviderMode::Both,
+            options_default,
+        );
+
+        assert!(input.capture_options.timing_tolerance.is_none());
+    }
+
+    #[test]
+    fn test_runner_input_with_capture_options_timing_tolerance_roundtrip() {
+        let original_options = CaptureOptions::new().with_timing_tolerance(Some(0.3));
+
+        let serialized =
+            serde_json::to_string(&original_options).expect("serialization should succeed");
+        let deserialized: CaptureOptions =
+            serde_json::from_str(&serialized).expect("deserialization should succeed");
+
+        assert_eq!(original_options, deserialized);
+        assert_eq!(deserialized.timing_tolerance, Some(0.3));
     }
 }
