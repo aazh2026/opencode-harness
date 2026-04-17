@@ -419,7 +419,7 @@
       "priority": "P1",
       "title": "Event subscribe via API",
       "description": "API endpoint to subscribe to server-side events",
-      "status": "in_progress",
+      "status": "done",
       "test_criteria": [
         "AddIntegrationTest: verify POST /events/subscribe creates event subscription",
         "AddIntegrationTest: verify POST /events/subscribe with event_types returns subscription_id",
@@ -441,7 +441,7 @@
       "priority": "P1",
       "title": "Tool list via API",
       "description": "API endpoint to list all registered tools",
-      "status": "todo",
+      "status": "in_progress",
       "test_criteria": [
         "AddIntegrationTest: verify GET /tools returns list of registered tools",
         "AddIntegrationTest: verify GET /tools returns tools with correct metadata (name, description, schema)",

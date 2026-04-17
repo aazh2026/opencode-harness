@@ -371,6 +371,63 @@ impl ApiClient {
             Err(ApiClientError::UnexpectedStatus(status))
         }
     }
+
+    pub async fn list_tools(&self) -> Result<Vec<Tool>, ApiClientError> {
+        let url = format!("{}/tools", self.base_url);
+        let mut request = self.client.get(&url);
+
+        if let Some(token) = &self.auth_token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request
+            .send()
+            .await
+            .map_err(ApiClientError::Request)?;
+
+        let status = response.status();
+        if status.is_success() {
+            #[derive(Deserialize)]
+            struct ToolsResponse { tools: Vec<Tool> }
+            let result: ToolsResponse = response
+                .json()
+                .await
+                .map_err(ApiClientError::Response)?;
+            Ok(result.tools)
+        } else if status.as_u16() == 401 {
+            Err(ApiClientError::Unauthorized)
+        } else {
+            Err(ApiClientError::UnexpectedStatus(status))
+        }
+    }
+
+    pub async fn get_tool(&self, tool_name: &str) -> Result<Tool, ApiClientError> {
+        let url = format!("{}/tools/{}", self.base_url, tool_name);
+        let mut request = self.client.get(&url);
+
+        if let Some(token) = &self.auth_token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request
+            .send()
+            .await
+            .map_err(ApiClientError::Request)?;
+
+        let status = response.status();
+        if status.is_success() {
+            response
+                .json()
+                .await
+                .map_err(ApiClientError::Response)
+        } else if status.as_u16() == 404 {
+            Err(ApiClientError::NotFound)
+        } else if status.as_u16() == 401 {
+            Err(ApiClientError::Unauthorized)
+        } else {
+            Err(ApiClientError::UnexpectedStatus(status))
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

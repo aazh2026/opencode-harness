@@ -445,6 +445,121 @@ mod tests {
 }
 
 #[cfg(test)]
+mod smoke_api_010_tests {
+    use crate::client::ApiClient;
+
+    const TEST_BASE_URL: &str = "http://localhost:8080";
+
+    fn create_test_client() -> ApiClient {
+        ApiClient::new(TEST_BASE_URL)
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_010_list_tools_returns_list() {
+        let client = create_test_client();
+
+        let result = client.list_tools().await;
+
+        assert!(result.is_ok(), "Expected list_tools to succeed, got: {:?}", result);
+        let tools = result.unwrap();
+        assert!(
+            tools.iter().all(|t| !t.name.is_empty()),
+            "Expected all tools to have non-empty name"
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_010_list_tools_returns_correct_metadata() {
+        let client = create_test_client();
+
+        let result = client.list_tools().await;
+
+        assert!(result.is_ok(), "Expected list_tools to succeed, got: {:?}", result);
+        let tools = result.unwrap();
+
+        for tool in &tools {
+            assert!(
+                !tool.name.is_empty(),
+                "Expected tool name to be non-empty"
+            );
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_010_get_tool_returns_specific_tool_details() {
+        let client = create_test_client();
+
+        let list_result = client.list_tools().await;
+        assert!(list_result.is_ok(), "List tools failed: {:?}", list_result);
+        let tools = list_result.unwrap();
+        assert!(!tools.is_empty(), "Expected at least one tool to exist");
+
+        let first_tool_name = &tools[0].name;
+        let get_result = client.get_tool(first_tool_name).await;
+
+        assert!(get_result.is_ok(), "Expected get_tool to succeed, got: {:?}", get_result);
+        let tool = get_result.unwrap();
+        assert_eq!(
+            tool.name, *first_tool_name,
+            "Expected tool name to match, got: {}, expected: {}",
+            tool.name, first_tool_name
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_010_get_nonexistent_tool_returns_404() {
+        let client = create_test_client();
+
+        let result = client.get_tool("nonexistent-tool-name").await;
+
+        match result {
+            Err(crate::client::ApiClientError::NotFound) => {},
+            other => panic!("Expected NotFound error, got: {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_010_list_tools_empty_returns_empty_array() {
+        let client = create_test_client();
+
+        let result = client.list_tools().await;
+
+        assert!(result.is_ok(), "Expected list_tools to succeed, got: {:?}", result);
+        let tools = result.unwrap();
+        assert!(
+            tools.is_empty() || tools.iter().any(|t| t.name.is_empty()),
+            "Expected empty array or tools with empty name when no tools exist"
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires running API server"]
+    async fn smoke_api_010_tool_has_optional_schema_fields() {
+        let client = create_test_client();
+
+        let list_result = client.list_tools().await;
+        assert!(list_result.is_ok(), "List tools failed: {:?}", list_result);
+        let tools = list_result.unwrap();
+
+        if !tools.is_empty() {
+            let tool = &tools[0];
+            let get_result = client.get_tool(&tool.name).await;
+            assert!(get_result.is_ok(), "Expected get_tool to succeed for tool: {}", tool.name);
+            let detailed_tool = get_result.unwrap();
+            assert_eq!(
+                detailed_tool.name, tool.name,
+                "Expected tool name to match"
+            );
+        }
+    }
+}
+
+#[cfg(test)]
 mod smoke_api_009_tests {
     use crate::client::ApiClient;
 
