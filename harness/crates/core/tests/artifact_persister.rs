@@ -169,7 +169,7 @@ fn test_full_artifact_persistence_workflow_creates_all_expected_files() {
             .with_artifacts_collected(2),
     );
 
-    let verdict = ParityVerdict::Identical;
+    let verdict = ParityVerdict::Pass;
 
     let diff_report_path = persister
         .generate_diff_report(&legacy_output, &rust_output, &verdict)
@@ -254,8 +254,9 @@ fn test_diff_report_with_different_category() {
         CapabilitySummary::default(),
     );
 
-    let verdict = ParityVerdict::Different {
+    let verdict = ParityVerdict::Fail {
         category: DiffCategory::OutputText,
+        details: "Output differs".to_string(),
     };
 
     let report_path = persister

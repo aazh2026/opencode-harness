@@ -213,7 +213,7 @@ impl ArtifactPersister {
             rust_duration_ms: rust_output.duration_ms,
             verdict: verdict.summary(),
             verdict_category: match verdict {
-                ParityVerdict::Different { category } => Some(category.clone()),
+                ParityVerdict::Fail { category, .. } => Some(category.clone()),
                 _ => None,
             },
             legacy_stdout_size: legacy_output.stdout.len(),
@@ -292,23 +292,43 @@ impl ArtifactPersister {
             rust_output.capability_summary.workspace_prepared,
             rust_output.capability_summary.artifacts_collected,
             match verdict {
-                ParityVerdict::Identical =>
+                ParityVerdict::Pass =>
                     "The legacy and rust implementations produced **identical** results."
                         .to_string(),
-                ParityVerdict::Equivalent =>
-                    "The legacy and rust implementations produced **equivalent** results."
-                        .to_string(),
-                ParityVerdict::Different { category } => format!(
-                    "The legacy and rust implementations showed a **{}** difference.",
+                ParityVerdict::PassWithAllowedVariance { variance_type, details } =>
+                    format!(
+                        "The legacy and rust implementations produced **equivalent** results ({:?}): {}.",
+                        variance_type, details
+                    ),
+                ParityVerdict::Fail { category, details } => format!(
+                    "The legacy and rust implementations showed a **{}** difference: {}.",
                     match category {
                         DiffCategory::OutputText => "output text",
                         DiffCategory::ExitCode => "exit code",
                         DiffCategory::Timing => "timing",
                         DiffCategory::SideEffects => "side effects",
                         DiffCategory::Protocol => "protocol",
-                    }
+                    },
+                    details
                 ),
-                ParityVerdict::Uncertain => "The comparison result is **uncertain**.".to_string(),
+                ParityVerdict::Warn { category, message } => format!(
+                    "A **{}** warning was detected: {}.",
+                    match category {
+                        DiffCategory::OutputText => "output text",
+                        DiffCategory::ExitCode => "exit code",
+                        DiffCategory::Timing => "timing",
+                        DiffCategory::SideEffects => "side effects",
+                        DiffCategory::Protocol => "protocol",
+                    },
+                    message
+                ),
+                ParityVerdict::ManualCheck { reason, candidates } => format!(
+                    "The comparison result is **uncertain** (manual check required): {} ({} candidates).",
+                    reason,
+                    candidates.len()
+                ),
+                ParityVerdict::Blocked { reason } =>
+                    format!("Execution was **blocked**: {:?}", reason),
                 ParityVerdict::Error { runner, reason } =>
                     format!("An **error** occurred in {}: {}", runner, reason),
             }

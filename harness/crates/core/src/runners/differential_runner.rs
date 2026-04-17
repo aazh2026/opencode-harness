@@ -5,7 +5,7 @@ use crate::runners::legacy_runner::{LegacyRunner, LegacyRunnerResult};
 use crate::runners::rust_runner::{RustRunner, RustRunnerResult};
 use crate::types::artifact::Artifact;
 use crate::types::failure_classification::FailureClassification;
-use crate::types::parity_verdict::{DiffCategory, ParityVerdict};
+use crate::types::parity_verdict::{DiffCategory, ParityVerdict, VarianceType};
 use crate::types::runner_input::RunnerInput;
 use crate::types::runner_output::RunnerOutput;
 use crate::types::task::Task;
@@ -70,7 +70,7 @@ impl<L: TaskLoader> DifferentialRunner<L> {
                 let legacy_paths = lr.artifact_paths.clone();
                 let rust_paths = rr.artifact_paths.clone();
                 let failure_kind = match &verdict {
-                    ParityVerdict::Different { category } => match category {
+                    ParityVerdict::Fail { category, .. } => match category {
                         DiffCategory::Timing => Some(FailureClassification::FlakySuspected),
                         _ => Some(FailureClassification::ImplementationFailure),
                     },
@@ -235,24 +235,35 @@ impl<L: TaskLoader> DifferentialRunner<L> {
     ) -> ParityVerdict {
         let (lr, rr) = match (legacy_result, rust_result) {
             (Ok(l), Ok(r)) => (l, r),
-            _ => return ParityVerdict::Uncertain,
+            _ => {
+                return ParityVerdict::ManualCheck {
+                    reason: "One or both runners failed".to_string(),
+                    candidates: vec![],
+                }
+            }
         };
 
         if lr.exit_code != rr.exit_code {
-            return ParityVerdict::Different {
+            return ParityVerdict::Fail {
                 category: DiffCategory::ExitCode,
+                details: format!(
+                    "Exit code mismatch: legacy={:?}, rust={:?}",
+                    lr.exit_code, rr.exit_code
+                ),
             };
         }
 
         if lr.stdout != rr.stdout {
-            return ParityVerdict::Different {
+            return ParityVerdict::Fail {
                 category: DiffCategory::OutputText,
+                details: "Stdout differs".to_string(),
             };
         }
 
         if lr.stderr != rr.stderr {
-            return ParityVerdict::Different {
+            return ParityVerdict::Fail {
                 category: DiffCategory::OutputText,
+                details: "Stderr differs".to_string(),
             };
         }
 
@@ -260,30 +271,40 @@ impl<L: TaskLoader> DifferentialRunner<L> {
         let max_duration = lr.duration_ms.max(rr.duration_ms);
         let timing_tolerance = input.capture_options.timing_tolerance.unwrap_or(0.5);
         if max_duration > 0 && timing_diff as f64 > max_duration as f64 * timing_tolerance {
-            return ParityVerdict::Different {
+            return ParityVerdict::Fail {
                 category: DiffCategory::Timing,
+                details: format!("Timing diff: {}ms", timing_diff),
             };
         }
 
         if lr.artifacts.len() != rr.artifacts.len() {
-            return ParityVerdict::Different {
+            return ParityVerdict::Fail {
                 category: DiffCategory::SideEffects,
+                details: format!(
+                    "Artifact count mismatch: legacy={}, rust={}",
+                    lr.artifacts.len(),
+                    rr.artifacts.len()
+                ),
             };
         }
 
         for (la, ra) in lr.artifacts.iter().zip(rr.artifacts.iter()) {
             if la.path != ra.path || la.kind != ra.kind {
-                return ParityVerdict::Different {
+                return ParityVerdict::Fail {
                     category: DiffCategory::SideEffects,
+                    details: format!("Artifact mismatch: {:?} vs {:?}", la.path, ra.path),
                 };
             }
         }
 
         if lr.stdout == rr.stdout && lr.stderr == rr.stderr && lr.exit_code == rr.exit_code {
-            return ParityVerdict::Identical;
+            return ParityVerdict::Pass;
         }
 
-        ParityVerdict::Equivalent
+        ParityVerdict::PassWithAllowedVariance {
+            variance_type: VarianceType::NonDeterministic,
+            details: "Outputs are semantically equivalent".to_string(),
+        }
     }
 
     pub fn execute_from_path(&self, path: &Path) -> Result<Vec<DifferentialResult>> {
@@ -326,7 +347,10 @@ impl DifferentialResult {
             task_id,
             legacy_result: None,
             rust_result: None,
-            verdict: ParityVerdict::Uncertain,
+            verdict: ParityVerdict::ManualCheck {
+                reason: "Result not yet computed".to_string(),
+                candidates: vec![],
+            },
             duration_ms: 0,
             diff_report_path: None,
             verdict_path: None,
@@ -557,7 +581,7 @@ on_missing_dependency: Fail
         let result = DifferentialResult::new("TEST-001".to_string());
         let summary = result.summary();
         assert!(summary.contains("TEST-001"));
-        assert!(summary.contains("Uncertain"));
+        assert!(summary.contains("ManualCheck"));
     }
 
     #[test]
@@ -659,7 +683,7 @@ on_missing_dependency: Fail
         assert!(result.is_ok());
         let diff_result = result.unwrap();
         if diff_result.legacy_result.is_some() && diff_result.rust_result.is_some() {
-            if matches!(diff_result.verdict, ParityVerdict::Identical) {
+            if matches!(diff_result.verdict, ParityVerdict::Pass) {
                 assert!(
                     diff_result.failure_kind.is_none(),
                     "failure_kind should be None when runners are identical"
@@ -679,7 +703,7 @@ on_missing_dependency: Fail
         assert!(result.is_ok());
         let diff_result = result.unwrap();
         match diff_result.verdict {
-            ParityVerdict::Different { category } => match category {
+            ParityVerdict::Fail { category, .. } => match category {
                 DiffCategory::OutputText | DiffCategory::ExitCode | DiffCategory::SideEffects => {
                     assert_eq!(
                             diff_result.failure_kind,
@@ -717,7 +741,7 @@ on_missing_dependency: Fail
         assert!(result.is_ok());
         let diff_result = result.unwrap();
         match diff_result.verdict {
-            ParityVerdict::Identical | ParityVerdict::Equivalent => {
+            ParityVerdict::Pass | ParityVerdict::PassWithAllowedVariance { .. } => {
                 assert!(
                     diff_result.failure_kind.is_none(),
                     "failure_kind should be None for identical or equivalent results"

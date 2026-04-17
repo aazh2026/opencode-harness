@@ -41,7 +41,9 @@ pub use fixture::{
     TranscriptType, Workspace as FixtureWorkspace, WorkspacePolicy,
 };
 pub use on_missing_dependency::OnMissingDependency;
-pub use parity_verdict::{DiffCategory, ParityVerdict};
+pub use parity_verdict::{
+    BlockedReason, DiffCategory, MismatchCandidate, ParityVerdict, VarianceType,
+};
 pub use path_convention::PathConvention;
 pub use provider_mode::ProviderMode;
 pub use report::{Report, TestCase, TestCaseStatus};
