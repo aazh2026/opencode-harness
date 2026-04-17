@@ -42,8 +42,8 @@ impl GateLevel {
             GateLevel::Nightly => "Nightly Gate",
             GateLevel::Release => "Release Gate",
         }
-}
     }
+}
 #[derive(Debug, Clone)]
 
 pub struct GateWarning {
@@ -73,15 +73,9 @@ impl GateWarning {
 #[derive(Debug, Clone)]
 pub enum GateFailure {
     /// A specific task was blocked and requires attention.
-    BlockedTask {
-        task_id: String,
-        reason: String,
-    },
+    BlockedTask { task_id: String, reason: String },
     /// Too many regressions detected compared to baseline.
-    TooManyRegressions {
-        regressed: u32,
-        threshold: u32,
-    },
+    TooManyRegressions { regressed: u32, threshold: u32 },
     /// Verdict mismatch between expected and actual results.
     VerdictMismatch {
         task_id: String,
@@ -109,7 +103,10 @@ impl GateFailure {
             GateFailure::BlockedTask { task_id, reason } => {
                 format!("Task '{}' blocked: {}", task_id, reason)
             }
-            GateFailure::TooManyRegressions { regressed, threshold } => {
+            GateFailure::TooManyRegressions {
+                regressed,
+                threshold,
+            } => {
                 format!(
                     "Too many regressions: {} (threshold: {})",
                     regressed, threshold

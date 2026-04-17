@@ -226,10 +226,7 @@ mod tests {
         let collector = MetricsCollector::from_report(&report);
 
         assert_eq!(collector.total_tasks, 3);
-        assert_eq!(
-            *collector.verdict_counts.get("Pass").unwrap_or(&0),
-            2
-        );
+        assert_eq!(*collector.verdict_counts.get("Pass").unwrap_or(&0), 2);
         assert_eq!(
             *collector
                 .verdict_counts

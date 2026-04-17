@@ -57,7 +57,12 @@ impl GitHubAnnotations {
     }
 
     /// Adds a warning annotation with file location.
-    pub fn add_warning_at(&mut self, message: impl Into<String>, file: &str, line: u32) -> &mut Self {
+    pub fn add_warning_at(
+        &mut self,
+        message: impl Into<String>,
+        file: &str,
+        line: u32,
+    ) -> &mut Self {
         self.warnings.push(Annotation {
             message: message.into(),
             file: Some(file.to_string()),
@@ -77,7 +82,12 @@ impl GitHubAnnotations {
     }
 
     /// Adds a notice annotation with file location.
-    pub fn add_notice_at(&mut self, message: impl Into<String>, file: &str, line: u32) -> &mut Self {
+    pub fn add_notice_at(
+        &mut self,
+        message: impl Into<String>,
+        file: &str,
+        line: u32,
+    ) -> &mut Self {
         self.notices.push(Annotation {
             message: message.into(),
             file: Some(file.to_string()),

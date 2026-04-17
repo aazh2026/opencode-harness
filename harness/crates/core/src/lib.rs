@@ -8,7 +8,7 @@ pub mod runners;
 pub mod types;
 pub mod verifiers;
 
-pub use loaders::{FixtureLoader, TaskLoader, TaskSchemaValidator};
+pub use loaders::{FixtureLoader, RegressionLoader, TaskLoader, TaskSchemaValidator};
 pub use normalizers::{NormalizedOutput, Normalizer, VarianceNormalizer, WhitespaceNormalizer};
 pub use runners::{
     BinaryResolver, DifferentialResult, DifferentialRunner, LegacyRunner, LegacyRunnerResult,

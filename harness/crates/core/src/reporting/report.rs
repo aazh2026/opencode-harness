@@ -105,7 +105,10 @@ impl ParityReport {
             summary: ReportSummary {
                 total_tasks: 0,
                 verdict_counts: BTreeMap::new(),
-                timing_ms: TimingStatsSummary { total_ms: 0, count: 0 },
+                timing_ms: TimingStatsSummary {
+                    total_ms: 0,
+                    count: 0,
+                },
                 pass_rate: 0.0,
             },
         }
@@ -260,11 +263,7 @@ mod tests {
     #[test]
     fn test_parity_report_add_task() {
         let mut report = ParityReport::new("DifferentialRunner");
-        let task = TaskResult::new(
-            "TEST-001".to_string(),
-            ParityVerdict::Pass,
-            100,
-        );
+        let task = TaskResult::new("TEST-001".to_string(), ParityVerdict::Pass, 100);
         report.add_task(task);
 
         assert_eq!(report.task_results.len(), 1);

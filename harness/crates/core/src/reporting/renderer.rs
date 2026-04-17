@@ -5,7 +5,11 @@ use std::fmt::Write;
 /// Trait for rendering parity reports to various output formats.
 pub trait ReportRenderer {
     /// Renders the report to the given writer.
-    fn render_report(&self, report: &ParityReport, writer: &mut dyn std::fmt::Write) -> std::fmt::Result;
+    fn render_report(
+        &self,
+        report: &ParityReport,
+        writer: &mut dyn std::fmt::Write,
+    ) -> std::fmt::Result;
 
     /// Renders the CI gate result to the given writer.
     fn render_gate(&self, gate: &CIGate, _writer: &mut dyn std::fmt::Write) -> std::fmt::Result {
@@ -54,19 +58,54 @@ impl Default for ConsoleRenderer {
 }
 
 impl ReportRenderer for ConsoleRenderer {
-    fn render_report(&self, report: &ParityReport, writer: &mut dyn std::fmt::Write) -> std::fmt::Result {
-        writeln!(writer, "{}", self.colored("═══════════════════════════════════════════", "cyan"))?;
+    fn render_report(
+        &self,
+        report: &ParityReport,
+        writer: &mut dyn std::fmt::Write,
+    ) -> std::fmt::Result {
+        writeln!(
+            writer,
+            "{}",
+            self.colored("═══════════════════════════════════════════", "cyan")
+        )?;
         writeln!(writer, "{} Parity Report", self.colored("│", "cyan"))?;
-        writeln!(writer, "{} Run ID: {}", self.colored("│", "cyan"), report.run_id)?;
-        writeln!(writer, "{} Runner: {}", self.colored("│", "cyan"), report.runner)?;
-        writeln!(writer, "{} Timestamp: {}", self.colored("│", "cyan"), report.timestamp)?;
-        writeln!(writer, "{}", self.colored("═══════════════════════════════════════════", "cyan"))?;
+        writeln!(
+            writer,
+            "{} Run ID: {}",
+            self.colored("│", "cyan"),
+            report.run_id
+        )?;
+        writeln!(
+            writer,
+            "{} Runner: {}",
+            self.colored("│", "cyan"),
+            report.runner
+        )?;
+        writeln!(
+            writer,
+            "{} Timestamp: {}",
+            self.colored("│", "cyan"),
+            report.timestamp
+        )?;
+        writeln!(
+            writer,
+            "{}",
+            self.colored("═══════════════════════════════════════════", "cyan")
+        )?;
 
         writeln!(writer)?;
         writeln!(writer, "{} Summary", self.colored("▶", "cyan"))?;
         writeln!(writer, "  Total tasks: {}", report.summary.total_tasks)?;
-        writeln!(writer, "  Pass rate: {:.1}%", report.summary.pass_rate * 100.0)?;
-        writeln!(writer, "  Total time: {}ms", report.summary.timing_ms.total_ms)?;
+        writeln!(
+            writer,
+            "  Pass rate: {:.1}%",
+            report.summary.pass_rate * 100.0
+        )?;
+        writeln!(
+            writer,
+            "  Total time: {}ms",
+            report.summary.timing_ms.total_ms
+        )?;
 
         writeln!(writer)?;
         writeln!(writer, "{} Verdict Breakdown", self.colored("▶", "cyan"))?;
@@ -102,23 +141,51 @@ impl ReportRenderer for ConsoleRenderer {
 
     fn render_gate(&self, gate: &CIGate, writer: &mut dyn std::fmt::Write) -> std::fmt::Result {
         writeln!(writer)?;
-        writeln!(writer, "{}", self.colored("═══════════════════════════════════════════", "cyan"))?;
+        writeln!(
+            writer,
+            "{}",
+            self.colored("═══════════════════════════════════════════", "cyan")
+        )?;
         writeln!(writer, "{} CI Gate Evaluation", self.colored("│", "cyan"))?;
-        writeln!(writer, "{} Level: {}", self.colored("│", "cyan"), gate.level.name())?;
+        writeln!(
+            writer,
+            "{} Level: {}",
+            self.colored("│", "cyan"),
+            gate.level.name()
+        )?;
 
         if gate.passed {
-            writeln!(writer, "{} Result: {}", self.colored("│", "cyan"), self.colored("PASSED ✓", "green"))?;
+            writeln!(
+                writer,
+                "{} Result: {}",
+                self.colored("│", "cyan"),
+                self.colored("PASSED ✓", "green")
+            )?;
         } else {
-            writeln!(writer, "{} Result: {}", self.colored("│", "cyan"), self.colored("FAILED ✗", "red"))?;
+            writeln!(
+                writer,
+                "{} Result: {}",
+                self.colored("│", "cyan"),
+                self.colored("FAILED ✗", "red")
+            )?;
         }
 
-        writeln!(writer, "{}", self.colored("═══════════════════════════════════════════", "cyan"))?;
+        writeln!(
+            writer,
+            "{}",
+            self.colored("═══════════════════════════════════════════", "cyan")
+        )?;
 
         if !gate.blockers.is_empty() {
             writeln!(writer)?;
             writeln!(writer, "{} Blockers:", self.colored("▶", "red"))?;
             for blocker in &gate.blockers {
-                writeln!(writer, "  {} {}", self.colored("✗", "red"), blocker.description())?;
+                writeln!(
+                    writer,
+                    "  {} {}",
+                    self.colored("✗", "red"),
+                    blocker.description()
+                )?;
             }
         }
 
@@ -131,7 +198,13 @@ impl ReportRenderer for ConsoleRenderer {
                     .as_ref()
                     .map(|id| format!(" [{}]", id))
                     .unwrap_or_default();
-                writeln!(writer, "  {} {}{}", self.colored("⚠", "yellow"), warning.message, task_info)?;
+                writeln!(
+                    writer,
+                    "  {} {}{}",
+                    self.colored("⚠", "yellow"),
+                    warning.message,
+                    task_info
+                )?;
             }
         }
 
@@ -160,18 +233,33 @@ impl FileRenderer {
         writeln!(&mut output, "**Run ID:** {}", report.run_id).unwrap();
         writeln!(&mut output, "**Runner:** {}", report.runner).unwrap();
         writeln!(&mut output, "**Timestamp:** {}", report.timestamp).unwrap();
-        writeln!(&mut output, "**Pass Rate:** {:.1}%", report.summary.pass_rate * 100.0).unwrap();
+        writeln!(
+            &mut output,
+            "**Pass Rate:** {:.1}%",
+            report.summary.pass_rate * 100.0
+        )
+        .unwrap();
 
         writeln!(&mut output).unwrap();
         writeln!(&mut output, "## Summary").unwrap();
         writeln!(&mut output).unwrap();
         writeln!(&mut output, "| Metric | Value |").unwrap();
         writeln!(&mut output, "|--------|-------|").unwrap();
-        writeln!(&mut output, "| Total Tasks | {} |", report.summary.total_tasks).unwrap();
+        writeln!(
+            &mut output,
+            "| Total Tasks | {} |",
+            report.summary.total_tasks
+        )
+        .unwrap();
         writeln!(&mut output, "| Passed | {} |", report.passed_count()).unwrap();
         writeln!(&mut output, "| Failed | {} |", report.failed_count()).unwrap();
         writeln!(&mut output, "| Errors | {} |", report.error_count()).unwrap();
-        writeln!(&mut output, "| Total Time | {}ms |", report.summary.timing_ms.total_ms).unwrap();
+        writeln!(
+            &mut output,
+            "| Total Time | {}ms |",
+            report.summary.timing_ms.total_ms
+        )
+        .unwrap();
 
         writeln!(&mut output).unwrap();
         writeln!(&mut output, "## Verdict Breakdown").unwrap();
@@ -201,7 +289,12 @@ impl FileRenderer {
             writeln!(&mut output, "## CI Gate").unwrap();
             writeln!(&mut output).unwrap();
             writeln!(&mut output, "**Level:** {}", g.level.name()).unwrap();
-            writeln!(&mut output, "**Result:** {}", if g.passed { "PASSED" } else { "FAILED" }).unwrap();
+            writeln!(
+                &mut output,
+                "**Result:** {}",
+                if g.passed { "PASSED" } else { "FAILED" }
+            )
+            .unwrap();
 
             if !g.blockers.is_empty() {
                 writeln!(&mut output).unwrap();
@@ -215,8 +308,16 @@ impl FileRenderer {
                 writeln!(&mut output).unwrap();
                 writeln!(&mut output, "### Warnings").unwrap();
                 for warning in &g.warnings {
-                    writeln!(&mut output, "- {}{}", warning.message, 
-                        warning.task_id.as_ref().map(|id| format!(" [{}]", id)).unwrap_or_default())
+                    writeln!(
+                        &mut output,
+                        "- {}{}",
+                        warning.message,
+                        warning
+                            .task_id
+                            .as_ref()
+                            .map(|id| format!(" [{}]", id))
+                            .unwrap_or_default()
+                    )
                     .unwrap();
                 }
             }
@@ -233,7 +334,11 @@ impl Default for FileRenderer {
 }
 
 impl ReportRenderer for FileRenderer {
-    fn render_report(&self, report: &ParityReport, writer: &mut dyn std::fmt::Write) -> std::fmt::Result {
+    fn render_report(
+        &self,
+        report: &ParityReport,
+        writer: &mut dyn std::fmt::Write,
+    ) -> std::fmt::Result {
         let md = self.render_markdown(report, None);
         write!(writer, "{}", md)
     }
@@ -256,7 +361,11 @@ impl Default for GitHubSummaryRenderer {
 }
 
 impl ReportRenderer for GitHubSummaryRenderer {
-    fn render_report(&self, report: &ParityReport, writer: &mut dyn std::fmt::Write) -> std::fmt::Result {
+    fn render_report(
+        &self,
+        report: &ParityReport,
+        writer: &mut dyn std::fmt::Write,
+    ) -> std::fmt::Result {
         // Output summary for GitHub Actions
         writeln!(writer, "## Parity Report Summary").unwrap();
         writeln!(writer).unwrap();
@@ -264,7 +373,12 @@ impl ReportRenderer for GitHubSummaryRenderer {
         writeln!(writer, "|--------|-------|").unwrap();
         writeln!(writer, "| Runner | {} |", report.runner).unwrap();
         writeln!(writer, "| Total Tasks | {} |", report.summary.total_tasks).unwrap();
-        writeln!(writer, "| Pass Rate | {:.1}% |", report.summary.pass_rate * 100.0).unwrap();
+        writeln!(
+            writer,
+            "| Pass Rate | {:.1}% |",
+            report.summary.pass_rate * 100.0
+        )
+        .unwrap();
         writeln!(writer, "| Passed | {} |", report.passed_count()).unwrap();
         writeln!(writer, "| Failed | {} |", report.failed_count()).unwrap();
         writeln!(writer, "| Errors | {} |", report.error_count()).unwrap();
@@ -275,11 +389,19 @@ impl ReportRenderer for GitHubSummaryRenderer {
 
     fn render_gate(&self, gate: &CIGate, writer: &mut dyn std::fmt::Write) -> std::fmt::Result {
         if gate.passed {
-            writeln!(writer, "::notice ::[{}] CI Gate PASSED - pass rate: {:.1}%", 
-                gate.level.name(), gate.summary.pass_rate * 100.0)?;
+            writeln!(
+                writer,
+                "::notice ::[{}] CI Gate PASSED - pass rate: {:.1}%",
+                gate.level.name(),
+                gate.summary.pass_rate * 100.0
+            )?;
         } else {
-            writeln!(writer, "::error ::[{}] CI Gate FAILED - pass rate: {:.1}%", 
-                gate.level.name(), gate.summary.pass_rate * 100.0)?;
+            writeln!(
+                writer,
+                "::error ::[{}] CI Gate FAILED - pass rate: {:.1}%",
+                gate.level.name(),
+                gate.summary.pass_rate * 100.0
+            )?;
         }
 
         for blocker in &gate.blockers {
@@ -287,8 +409,16 @@ impl ReportRenderer for GitHubSummaryRenderer {
         }
 
         for warning in &gate.warnings {
-            writeln!(writer, "::warning ::Warning: {}{}", warning.message,
-                warning.task_id.as_ref().map(|id| format!(" ({})", id)).unwrap_or_default())?;
+            writeln!(
+                writer,
+                "::warning ::Warning: {}{}",
+                warning.message,
+                warning
+                    .task_id
+                    .as_ref()
+                    .map(|id| format!(" ({})", id))
+                    .unwrap_or_default()
+            )?;
         }
 
         Ok(())
@@ -304,7 +434,11 @@ mod tests {
 
     fn create_test_report() -> ParityReport {
         let mut report = ParityReport::new("TestRunner");
-        report.add_task(TaskResult::new("TEST-001".to_string(), ParityVerdict::Pass, 100));
+        report.add_task(TaskResult::new(
+            "TEST-001".to_string(),
+            ParityVerdict::Pass,
+            100,
+        ));
         report.add_task(TaskResult::new(
             "TEST-002".to_string(),
             ParityVerdict::Fail {
