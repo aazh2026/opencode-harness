@@ -5,7 +5,21 @@ use opencode_core::types::parity_verdict::{DiffCategory, ParityVerdict};
 use opencode_core::types::severity::Severity;
 
 #[test]
-fn test_parity_report_has_mismatch_counts_field() {
+fn test_parity_report_has_all_required_fields() {
+    let report = ParityReport::new("TestRunner");
+
+    assert!(!report.run_id.to_string().is_empty(), "ParityReport should have run_id");
+    assert!(!report.timestamp.to_rfc3339().is_empty(), "ParityReport should have timestamp");
+    assert_eq!(report.runner, "TestRunner", "ParityReport should have runner");
+    assert!(report.task_results.is_empty(), "ParityReport should have task_results");
+    assert_eq!(report.summary.total_tasks, 0, "ParityReport should have summary");
+    assert!(report.mismatch_counts.is_empty(), "ParityReport should have mismatch_counts");
+    assert!(report.severity_aggregation.is_empty(), "ParityReport should have severity_aggregation");
+    assert_eq!(report.suite_info.name, "", "ParityReport should have suite_info");
+}
+
+#[test]
+fn test_report_summary_has_mismatch_counts() {
     let report = ParityReport::new("TestRunner");
     assert!(
         report.mismatch_counts.iter().next().is_none(),
@@ -17,7 +31,7 @@ fn test_parity_report_has_mismatch_counts_field() {
 }
 
 #[test]
-fn test_parity_report_has_severity_aggregation_field() {
+fn test_report_summary_has_severity_aggregation() {
     let report = ParityReport::new("TestRunner");
     assert!(
         report.severity_aggregation.iter().next().is_none(),
@@ -29,7 +43,7 @@ fn test_parity_report_has_severity_aggregation_field() {
 }
 
 #[test]
-fn test_parity_report_has_suite_info_field() {
+fn test_parity_report_has_suite_info() {
     let report = ParityReport::new("TestRunner");
     assert_eq!(report.suite_info.name, "", "ParityReport should have suite_info field");
     let mut report = ParityReport::new("TestRunner");
@@ -43,7 +57,7 @@ fn test_parity_report_has_suite_info_field() {
 }
 
 #[test]
-fn test_report_summary_has_failure_type_breakdown_field() {
+fn test_report_summary_has_failure_type_breakdown() {
     let mut report = ParityReport::new("TestRunner");
     report.compute_summary();
     assert!(
@@ -53,7 +67,7 @@ fn test_report_summary_has_failure_type_breakdown_field() {
 }
 
 #[test]
-fn test_report_summary_has_manual_check_count_field() {
+fn test_report_summary_has_manual_check_count() {
     let mut report = ParityReport::new("TestRunner");
     report.compute_summary();
     assert_eq!(
@@ -75,7 +89,7 @@ fn test_report_summary_has_manual_check_count_field() {
 }
 
 #[test]
-fn test_report_summary_has_environment_limited_count_field() {
+fn test_report_summary_has_environment_limited_count() {
     let mut report = ParityReport::new("TestRunner");
     report.compute_summary();
     assert_eq!(
@@ -96,7 +110,7 @@ fn test_report_summary_has_environment_limited_count_field() {
 }
 
 #[test]
-fn test_report_summary_has_artifact_links_field() {
+fn test_report_summary_has_artifact_links() {
     let mut report = ParityReport::new("TestRunner");
     report.compute_summary();
     assert!(
@@ -117,7 +131,7 @@ fn test_report_summary_has_artifact_links_field() {
 }
 
 #[test]
-fn test_report_summary_has_whitelist_applied_field() {
+fn test_report_summary_has_whitelist_applied() {
     let mut report = ParityReport::new("TestRunner");
     report.compute_summary();
     assert!(
@@ -135,7 +149,7 @@ fn test_report_summary_has_whitelist_applied_field() {
 }
 
 #[test]
-fn test_compute_summary_populates_all_new_fields() {
+fn test_compute_summary_calculates_all_fields() {
     use opencode_core::types::parity_verdict::BlockedReason;
     use opencode_core::types::failure_classification::FailureClassification;
 
@@ -203,7 +217,7 @@ fn test_compute_summary_populates_all_new_fields() {
 }
 
 #[test]
-fn test_parity_report_json_roundtrip_serialization() {
+fn test_json_roundtrip_serialization() {
     let mut report = ParityReport::new("DifferentialRunner");
 
     report.add_task(TaskResult::new("TASK-001".to_string(), ParityVerdict::Pass, 100));
