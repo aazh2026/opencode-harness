@@ -4,6 +4,7 @@ pub mod baseline_recorder;
 pub mod binary_resolver;
 pub mod differential_runner;
 pub mod legacy_runner;
+pub mod regression_candidate_generator;
 pub mod rust_runner;
 
 pub use artifact_persister::{
@@ -15,4 +16,7 @@ pub use baseline_recorder::{BaselineRecorder, DefaultBaselineRecorder};
 pub use binary_resolver::BinaryResolver;
 pub use differential_runner::{DifferentialResult, DifferentialRunner};
 pub use legacy_runner::{LegacyRunner, LegacyRunnerResult};
+pub use regression_candidate_generator::{
+    DefaultRegressionCandidateGenerator, RegressionCandidateGenerator,
+};
 pub use rust_runner::{RustRunner, RustRunnerResult};
