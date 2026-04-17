@@ -142,7 +142,11 @@ impl LegacyRunner {
             Ok(o) => (o, None),
             Err(e) => {
                 let err_msg = e.to_string();
-                let failure = FailureClassification::InfraFailure;
+                let failure = if err_msg.contains("timed out") {
+                    FailureClassification::FlakySuspected
+                } else {
+                    FailureClassification::InfraFailure
+                };
                 return self.build_error_output(
                     started_at,
                     Utc::now(),
@@ -518,6 +522,138 @@ mod tests {
             FailureClassification::InfraFailure => {}
             FailureClassification::ImplementationFailure => {}
             FailureClassification::FlakySuspected => {}
+        }
+    }
+
+    #[test]
+    fn test_timeout_enforcement_kills_process_after_timeout() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sleep".to_string();
+        task.input.args = vec!["10".to_string()];
+
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            HashMap::new(),
+            1,
+            Some(PathBuf::from("/bin/sleep")),
+        );
+
+        let runner = LegacyRunner::new("test-timeout");
+        let start = std::time::Instant::now();
+        let result = runner.execute(&input);
+        let elapsed = start.elapsed();
+
+        assert!(
+            result.is_ok(),
+            "Expected Ok with failure_kind on timeout but got: {:?}",
+            result
+        );
+        let output = result.unwrap();
+        assert!(
+            output.stderr.contains("timed out") || output.stderr.contains("killed"),
+            "Error message should mention timeout or killed: {}",
+            output.stderr
+        );
+        assert_eq!(
+            output.failure_kind,
+            Some(FailureClassification::FlakySuspected),
+            "Expected FlakySuspected on timeout"
+        );
+        assert!(
+            elapsed.as_secs() < 5,
+            "Process should be killed quickly after timeout, elapsed: {}s",
+            elapsed.as_secs()
+        );
+    }
+
+    #[test]
+    fn test_timeout_failure_classification_is_flaky_on_timeout() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sleep".to_string();
+        task.input.args = vec!["10".to_string()];
+
+        let input = create_runner_input(
+            task,
+            temp_dir.path().to_path_buf(),
+            HashMap::new(),
+            1,
+            Some(PathBuf::from("/bin/sleep")),
+        );
+
+        let runner = LegacyRunner::new("test-timeout-classification");
+        let result = runner.execute(&input);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert_eq!(
+            output.failure_kind,
+            Some(FailureClassification::FlakySuspected),
+            "Expected FlakySuspected on timeout"
+        );
+    }
+
+    #[test]
+    fn test_timeout_with_various_timeout_values() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut task = create_test_task();
+        task.input.command = "/bin/sleep".to_string();
+        task.input.args = vec!["3".to_string()];
+
+        for timeout_value in [1u64, 5, 10] {
+            let input = create_runner_input(
+                task.clone(),
+                temp_dir.path().to_path_buf(),
+                HashMap::new(),
+                timeout_value,
+                Some(PathBuf::from("/bin/sleep")),
+            );
+
+            let runner = LegacyRunner::new(&format!("test-timeout-{}", timeout_value));
+            let start = std::time::Instant::now();
+            let result = runner.execute(&input);
+            let elapsed = start.elapsed();
+
+            if timeout_value <= 3 {
+                assert!(
+                    result.is_ok(),
+                    "Expected Ok with failure_kind for timeout={} but got: {:?}",
+                    timeout_value,
+                    result
+                );
+                let output = result.unwrap();
+                assert!(
+                    output.stderr.contains("timed out") || output.stderr.contains("killed"),
+                    "Error should mention timeout: {}",
+                    output.stderr
+                );
+                assert_eq!(
+                    output.failure_kind,
+                    Some(FailureClassification::FlakySuspected),
+                    "Expected FlakySuspected on timeout"
+                );
+            } else {
+                assert!(
+                    result.is_ok(),
+                    "Should succeed with timeout={} but got: {:?}",
+                    timeout_value,
+                    result
+                );
+                let output = result.unwrap();
+                assert!(
+                    output.failure_kind.is_none()
+                        || output.failure_kind == Some(FailureClassification::FlakySuspected),
+                    "Should not have failure_kind for successful run"
+                );
+            }
+            assert!(
+                elapsed.as_secs() < timeout_value as u64 + 2,
+                "Elapsed {}s should be less than timeout+2s for timeout={}",
+                elapsed.as_secs(),
+                timeout_value
+            );
         }
     }
 }
