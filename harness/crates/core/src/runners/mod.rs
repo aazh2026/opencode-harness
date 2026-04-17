@@ -5,7 +5,8 @@ pub mod legacy_runner;
 pub mod rust_runner;
 
 pub use artifact_persister::{
-    ArtifactDiff, ArtifactPersister, DiffReport, MetadataJson, RunnerType,
+    ArtifactDiff, ArtifactPersister, DiffReport, FileTreeDiff, FileTreeEntry, FileTreeEntryType,
+    FileTreeSnapshot, MetadataJson, RunnerType,
 };
 pub use binary_resolver::BinaryResolver;
 pub use differential_runner::{DifferentialResult, DifferentialRunner};

@@ -8,8 +8,9 @@ use crate::types::session_metadata::SessionMetadata;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{debug, info};
+use walkdir::WalkDir;
 
 #[derive(Debug, Clone)]
 pub struct ArtifactPersister {
@@ -197,6 +198,132 @@ impl ArtifactPersister {
         })?;
 
         Ok(snapshot_path)
+    }
+
+    fn format_permissions(metadata: &fs::Metadata) -> String {
+        use std::os::unix::fs::PermissionsExt;
+        format!("{:o}", metadata.permissions().mode() & 0o777)
+    }
+
+    pub fn capture_file_tree(&self, root: &Path) -> Result<FileTreeSnapshot> {
+        let root = root.to_path_buf();
+        let mut entries = Vec::new();
+        let mut total_files = 0;
+        let mut total_dirs = 0;
+
+        for entry in WalkDir::new(&root).follow_links(false) {
+            let entry = entry.map_err(|e| {
+                ErrorType::Runner(format!(
+                    "Failed to walk directory '{}': {}",
+                    root.display(),
+                    e
+                ))
+            })?;
+
+            let path = entry.path().to_path_buf();
+            let relative_path = path.strip_prefix(&root).unwrap_or(&path).to_path_buf();
+
+            let metadata = entry.metadata().map_err(|e| {
+                ErrorType::Runner(format!(
+                    "Failed to get metadata for '{}': {}",
+                    path.display(),
+                    e
+                ))
+            })?;
+
+            let entry_type = if metadata.is_file() {
+                total_files += 1;
+                FileTreeEntryType::File
+            } else if metadata.is_dir() {
+                total_dirs += 1;
+                FileTreeEntryType::Directory
+            } else if metadata.is_symlink() {
+                FileTreeEntryType::SymLink
+            } else {
+                FileTreeEntryType::Other
+            };
+
+            let size_bytes = if metadata.is_file() {
+                Some(metadata.len())
+            } else {
+                None
+            };
+
+            let permissions = Self::format_permissions(&metadata);
+
+            let modified_at = metadata.modified().ok().map(DateTime::from);
+
+            entries.push(FileTreeEntry {
+                path: relative_path,
+                entry_type,
+                size_bytes,
+                permissions,
+                modified_at,
+            });
+        }
+
+        Ok(FileTreeSnapshot {
+            root_path: root,
+            captured_at: Utc::now(),
+            entries,
+            total_files,
+            total_dirs,
+        })
+    }
+
+    pub fn diff_file_trees(
+        &self,
+        before: &FileTreeSnapshot,
+        after: &FileTreeSnapshot,
+    ) -> FileTreeDiff {
+        let before_paths: std::collections::HashMap<_, _> = before
+            .entries
+            .iter()
+            .map(|e| (e.path.clone(), e.clone()))
+            .collect();
+        let after_paths: std::collections::HashMap<_, _> = after
+            .entries
+            .iter()
+            .map(|e| (e.path.clone(), e.clone()))
+            .collect();
+
+        let before_keys: std::collections::HashSet<PathBuf> =
+            before_paths.keys().cloned().collect();
+        let after_keys: std::collections::HashSet<PathBuf> = after_paths.keys().cloned().collect();
+
+        let removed: Vec<PathBuf> = before_keys.difference(&after_keys).cloned().collect();
+
+        let added: Vec<PathBuf> = after_keys.difference(&before_keys).cloned().collect();
+
+        let unchanged_count = before_keys
+            .intersection(&after_keys)
+            .filter(|k| {
+                let before_entry = before_paths.get(k.as_path()).unwrap();
+                let after_entry = after_paths.get(k.as_path()).unwrap();
+                before_entry.entry_type == after_entry.entry_type
+                    && before_entry.size_bytes == after_entry.size_bytes
+                    && before_entry.permissions == after_entry.permissions
+            })
+            .count();
+
+        let modified: Vec<PathBuf> = before_keys
+            .intersection(&after_keys)
+            .filter(|k| {
+                let before_entry = before_paths.get(k.as_path()).unwrap();
+                let after_entry = after_paths.get(k.as_path()).unwrap();
+                before_entry.entry_type != after_entry.entry_type
+                    || before_entry.size_bytes != after_entry.size_bytes
+                    || before_entry.permissions != after_entry.permissions
+            })
+            .cloned()
+            .collect();
+
+        FileTreeDiff {
+            added,
+            removed,
+            modified,
+            unchanged_count,
+        }
     }
 
     pub fn generate_diff_report(
@@ -504,6 +631,40 @@ pub enum RunnerType {
     Rust,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FileTreeEntryType {
+    File,
+    Directory,
+    SymLink,
+    Other,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileTreeEntry {
+    pub path: PathBuf,
+    pub entry_type: FileTreeEntryType,
+    pub size_bytes: Option<u64>,
+    pub permissions: String,
+    pub modified_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileTreeSnapshot {
+    pub root_path: PathBuf,
+    pub captured_at: DateTime<Utc>,
+    pub entries: Vec<FileTreeEntry>,
+    pub total_files: usize,
+    pub total_dirs: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileTreeDiff {
+    pub added: Vec<PathBuf>,
+    pub removed: Vec<PathBuf>,
+    pub modified: Vec<PathBuf>,
+    pub unchanged_count: usize,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -663,5 +824,143 @@ mod tests {
         let mut expected = diff.in_both.clone();
         expected.sort();
         assert_eq!(expected, vec!["/tmp/file2.txt", "/tmp/shared.txt"]);
+    }
+
+    #[test]
+    fn test_file_tree_entry_type_enum_variants() {
+        assert_eq!(FileTreeEntryType::File, FileTreeEntryType::File);
+        assert_eq!(FileTreeEntryType::Directory, FileTreeEntryType::Directory);
+        assert_eq!(FileTreeEntryType::SymLink, FileTreeEntryType::SymLink);
+        assert_eq!(FileTreeEntryType::Other, FileTreeEntryType::Other);
+        assert_ne!(FileTreeEntryType::File, FileTreeEntryType::Directory);
+    }
+
+    #[test]
+    fn test_file_tree_entry_struct_captures_fields() {
+        let path = PathBuf::from("test_file.txt");
+        let entry = FileTreeEntry {
+            path: path.clone(),
+            entry_type: FileTreeEntryType::File,
+            size_bytes: Some(1024),
+            permissions: String::from("644"),
+            modified_at: Some(Utc::now()),
+        };
+
+        assert_eq!(entry.path, path);
+        assert_eq!(entry.entry_type, FileTreeEntryType::File);
+        assert_eq!(entry.size_bytes, Some(1024));
+        assert_eq!(entry.permissions, "644");
+        assert!(entry.modified_at.is_some());
+    }
+
+    #[test]
+    fn test_file_tree_snapshot_captures_root_timestamp_entries_counts() {
+        let root = PathBuf::from("/test/root");
+        let captured_at = Utc::now();
+        let entries = vec![
+            FileTreeEntry {
+                path: PathBuf::from("file1.txt"),
+                entry_type: FileTreeEntryType::File,
+                size_bytes: Some(100),
+                permissions: String::from("644"),
+                modified_at: Some(Utc::now()),
+            },
+            FileTreeEntry {
+                path: PathBuf::from("subdir"),
+                entry_type: FileTreeEntryType::Directory,
+                size_bytes: None,
+                permissions: String::from("755"),
+                modified_at: Some(Utc::now()),
+            },
+        ];
+
+        let snapshot = FileTreeSnapshot {
+            root_path: root.clone(),
+            captured_at,
+            entries: entries.clone(),
+            total_files: 1,
+            total_dirs: 1,
+        };
+
+        assert_eq!(snapshot.root_path, root);
+        assert_eq!(snapshot.captured_at, captured_at);
+        assert_eq!(snapshot.entries.len(), 2);
+        assert_eq!(snapshot.total_files, 1);
+        assert_eq!(snapshot.total_dirs, 1);
+    }
+
+    #[test]
+    fn test_file_tree_diff_identifies_added_removed_modified_unchanged() {
+        let before_entries = vec![
+            FileTreeEntry {
+                path: PathBuf::from("file1.txt"),
+                entry_type: FileTreeEntryType::File,
+                size_bytes: Some(100),
+                permissions: String::from("644"),
+                modified_at: Some(Utc::now()),
+            },
+            FileTreeEntry {
+                path: PathBuf::from("file2.txt"),
+                entry_type: FileTreeEntryType::File,
+                size_bytes: Some(200),
+                permissions: String::from("644"),
+                modified_at: Some(Utc::now()),
+            },
+            FileTreeEntry {
+                path: PathBuf::from("unchanged.txt"),
+                entry_type: FileTreeEntryType::File,
+                size_bytes: Some(300),
+                permissions: String::from("644"),
+                modified_at: Some(Utc::now()),
+            },
+        ];
+
+        let after_entries = vec![
+            FileTreeEntry {
+                path: PathBuf::from("file1.txt"),
+                entry_type: FileTreeEntryType::File,
+                size_bytes: Some(150),
+                permissions: String::from("644"),
+                modified_at: Some(Utc::now()),
+            },
+            FileTreeEntry {
+                path: PathBuf::from("file3.txt"),
+                entry_type: FileTreeEntryType::File,
+                size_bytes: Some(250),
+                permissions: String::from("644"),
+                modified_at: Some(Utc::now()),
+            },
+            FileTreeEntry {
+                path: PathBuf::from("unchanged.txt"),
+                entry_type: FileTreeEntryType::File,
+                size_bytes: Some(300),
+                permissions: String::from("644"),
+                modified_at: Some(Utc::now()),
+            },
+        ];
+
+        let before = FileTreeSnapshot {
+            root_path: PathBuf::from("/test"),
+            captured_at: Utc::now(),
+            entries: before_entries,
+            total_files: 3,
+            total_dirs: 0,
+        };
+
+        let after = FileTreeSnapshot {
+            root_path: PathBuf::from("/test"),
+            captured_at: Utc::now(),
+            entries: after_entries,
+            total_files: 3,
+            total_dirs: 0,
+        };
+
+        let persister = ArtifactPersister::new("diff-test", PathBuf::from("/tmp"));
+        let diff = persister.diff_file_trees(&before, &after);
+
+        assert_eq!(diff.added, vec![PathBuf::from("file3.txt")]);
+        assert_eq!(diff.removed, vec![PathBuf::from("file2.txt")]);
+        assert_eq!(diff.modified, vec![PathBuf::from("file1.txt")]);
+        assert_eq!(diff.unchanged_count, 1);
     }
 }

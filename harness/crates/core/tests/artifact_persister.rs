@@ -1,6 +1,6 @@
 use chrono::Utc;
 use opencode_core::runners::artifact_persister::{
-    ArtifactPersister, DiffReport, MetadataJson, RunnerType,
+    ArtifactPersister, DiffReport, FileTreeEntryType, MetadataJson, RunnerType,
 };
 use opencode_core::types::artifact::{Artifact, ArtifactKind};
 use opencode_core::types::capability_summary::CapabilitySummary;
@@ -8,6 +8,7 @@ use opencode_core::types::failure_classification::FailureClassification;
 use opencode_core::types::parity_verdict::{DiffCategory, ParityVerdict};
 use opencode_core::types::runner_output::RunnerOutput;
 use opencode_core::types::session_metadata::SessionMetadata;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -322,4 +323,80 @@ fn test_build_runner_output_integration() {
     assert!(result.stderr_path.exists());
     assert_eq!(result.artifacts.len(), 2);
     assert_eq!(result.artifact_paths.len(), 2);
+}
+
+#[test]
+fn test_capture_file_tree_produces_valid_snapshot() {
+    let temp_dir = TempDir::new().unwrap();
+    let persister = ArtifactPersister::new("file-tree-test", temp_dir.path());
+
+    let test_dir = temp_dir.path().join("test_data");
+    fs::create_dir_all(&test_dir).unwrap();
+
+    fs::write(test_dir.join("file1.txt"), "content 1").unwrap();
+    fs::write(test_dir.join("file2.txt"), "content 2").unwrap();
+    fs::create_dir(test_dir.join("subdir")).unwrap();
+    fs::write(test_dir.join("subdir/nested.txt"), "nested content").unwrap();
+
+    let snapshot = persister.capture_file_tree(&test_dir).unwrap();
+
+    assert_eq!(snapshot.root_path, test_dir);
+    assert!(snapshot.captured_at <= Utc::now());
+    assert!(snapshot.total_files >= 3);
+    assert!(snapshot.total_dirs >= 1);
+
+    let entry_paths: Vec<_> = snapshot.entries.iter().map(|e| e.path.clone()).collect();
+    assert!(entry_paths.contains(&PathBuf::from("file1.txt")));
+    assert!(entry_paths.contains(&PathBuf::from("file2.txt")));
+    assert!(entry_paths.contains(&PathBuf::from("subdir")));
+    assert!(entry_paths.contains(&PathBuf::from("subdir/nested.txt")));
+
+    for entry in &snapshot.entries {
+        if entry.path == PathBuf::from("file1.txt") {
+            assert_eq!(entry.entry_type, FileTreeEntryType::File);
+            assert!(entry.size_bytes.is_some());
+            assert!(!entry.permissions.is_empty());
+        }
+        if entry.path == PathBuf::from("subdir") {
+            assert_eq!(entry.entry_type, FileTreeEntryType::Directory);
+            assert!(entry.size_bytes.is_none());
+        }
+    }
+}
+
+#[test]
+fn test_diff_file_trees_identifies_added_removed_modified() {
+    let temp_dir = TempDir::new().unwrap();
+    let persister = ArtifactPersister::new("diff-tree-test", temp_dir.path());
+
+    let before_dir = temp_dir.path().join("before");
+    let after_dir = temp_dir.path().join("after");
+    fs::create_dir_all(&before_dir).unwrap();
+    fs::create_dir_all(&after_dir).unwrap();
+
+    fs::write(before_dir.join("existing.txt"), "original content").unwrap();
+    fs::write(before_dir.join("to_modify.txt"), "short").unwrap();
+
+    fs::write(after_dir.join("existing.txt"), "original content").unwrap();
+    fs::write(after_dir.join("to_modify.txt"), "new longer content").unwrap();
+    fs::write(after_dir.join("new_file.txt"), "brand new").unwrap();
+
+    let before_snapshot = persister.capture_file_tree(&before_dir).unwrap();
+    let after_snapshot = persister.capture_file_tree(&after_dir).unwrap();
+
+    let diff = persister.diff_file_trees(&before_snapshot, &after_snapshot);
+
+    assert!(diff.added.iter().any(|p| p.as_os_str() == "new_file.txt"));
+    assert!(diff.removed.is_empty());
+    assert!(diff
+        .modified
+        .iter()
+        .any(|p| p.as_os_str() == "to_modify.txt"));
+
+    let existing_entry = after_snapshot
+        .entries
+        .iter()
+        .find(|e| e.path == PathBuf::from("existing.txt"))
+        .unwrap();
+    assert_eq!(existing_entry.entry_type, FileTreeEntryType::File);
 }
