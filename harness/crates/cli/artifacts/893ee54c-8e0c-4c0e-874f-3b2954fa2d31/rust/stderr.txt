@@ -1,1 +1,0 @@
-Command 'echo' does not exist for task 'TEST-LOAD-001' (workspace: /tmp)

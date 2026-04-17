@@ -6,3 +6,4 @@
 /.openclaw/
 *.log
 /harness/crates/core/artifacts/
+/harness/crates/cli/artifacts/

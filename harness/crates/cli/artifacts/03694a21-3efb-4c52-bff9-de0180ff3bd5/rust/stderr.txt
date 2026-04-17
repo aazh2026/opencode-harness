@@ -1,1 +1,0 @@
-Command 'printf' does not exist for task 'E2E-TEST-001' (workspace: /tmp)

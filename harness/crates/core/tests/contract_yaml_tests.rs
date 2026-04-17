@@ -1,9 +1,9 @@
-use opencode_core::loaders::{Contract, ContractLoader, DefaultContractLoader};
+use opencode_core::loaders::{ContractLoader, DefaultContractLoader};
 use std::path::PathBuf;
 
 fn get_contract_path(contract_name: &str) -> PathBuf {
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir.join("../../../harness/contracts").join(contract_name)
+    manifest_dir.join("../../contracts").join(contract_name)
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn test_session_contract_yaml_valid() {
 fn test_all_contracts_loadable() {
     let loader = DefaultContractLoader::new();
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let contracts_dir = manifest_dir.join("../../../harness/contracts");
+    let contracts_dir = manifest_dir.join("../../contracts");
 
     let cli_path = contracts_dir.join("cli/cli_contract.yaml");
     let perm_path = contracts_dir.join("permissions/permission_contract.yaml");
