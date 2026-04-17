@@ -20,7 +20,7 @@ pub enum TestCaseStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Report {
+pub struct SimpleReport {
     pub timestamp: String,
     pub suite: String,
     pub total: u32,
@@ -36,7 +36,7 @@ mod tests {
 
     #[test]
     fn test_report_has_all_required_fields() {
-        let report = Report {
+        let report = SimpleReport {
             timestamp: "2026-04-16T12:00:00Z".to_string(),
             suite: "test-suite".to_string(),
             total: 10,
@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn test_report_serde_roundtrip() {
-        let report = Report {
+        let report = SimpleReport {
             timestamp: "2026-04-16T12:00:00Z".to_string(),
             suite: "integration".to_string(),
             total: 5,
@@ -68,7 +68,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&report).unwrap();
-        let deserialized: Report = serde_json::from_str(&json).unwrap();
+        let deserialized: SimpleReport = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized, report);
     }
 

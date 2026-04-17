@@ -138,7 +138,7 @@
 | Module | types |
 | Priority | P2 |
 | Estimated Time | 0.5 day |
-| Status | Not Started |
+| Status | ✅ Done |
 
 ---
 

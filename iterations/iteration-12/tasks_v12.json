@@ -127,7 +127,7 @@
       "priority": "P2",
       "title": "Unify Report type naming",
       "description": "Rename types/report.rs::Report to SimpleReport to avoid confusion with ParityReport. Update all references throughout the codebase.",
-      "status": "todo",
+      "status": "done",
       "test_criteria": [
         "AddRegressionTest: ensure types/report.rs compiles after renaming Report to SimpleReport",
         "AddRegressionTest: ensure all references to Report type in cli/, api/, and core/ are updated",

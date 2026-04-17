@@ -14,7 +14,7 @@ use opencode_core::types::fixture::{
 use opencode_core::types::on_missing_dependency::OnMissingDependency;
 use opencode_core::types::path_convention::PathConvention;
 use opencode_core::types::provider_mode::ProviderMode;
-use opencode_core::types::report::{Report, TestCase, TestCaseStatus};
+use opencode_core::types::report::{SimpleReport, TestCase, TestCaseStatus};
 use opencode_core::types::severity::Severity;
 use opencode_core::types::task::{Task, TaskCategory};
 use opencode_core::types::task_input::TaskInput;
@@ -211,7 +211,7 @@ fn test_types_module_exports_provider_mode() {
 
 #[test]
 fn test_types_module_exports_report() {
-    let report = Report {
+    let report = SimpleReport {
         timestamp: "2026-04-16".to_string(),
         suite: "test".to_string(),
         total: 10,
@@ -406,7 +406,7 @@ fn test_module_exports_compile_correctly() {
         );
         let _ = types::on_missing_dependency::OnMissingDependency::Fail;
         let _ = types::provider_mode::ProviderMode::Both;
-        let _ = types::report::Report {
+        let _ = types::report::SimpleReport {
             timestamp: "".to_string(),
             suite: "".to_string(),
             total: 0,

@@ -2,7 +2,7 @@ use opencode_core::types::{
     AgentMode, AllowedVariance, AssertionType, ConfigFormat, DefaultEnvironmentProbe, EntryMode,
     EnvironmentInfo, EnvironmentProbe, ExecutionPolicy, FailureClassification, FixtureConfig,
     FixtureFile, FixtureProject, FixtureWorkspace, OnMissingDependency, PathConvention,
-    ProviderMode, Report, ResetStrategy, Severity, Task, TaskCategory, TaskInput, TaskOutputs,
+    ProviderMode, SimpleReport, ResetStrategy, Severity, Task, TaskCategory, TaskInput, TaskOutputs,
     TaskStatus, TestCase, TestCaseStatus, TimingVariance, Transcript, TranscriptType, Workspace,
     WorkspacePolicy,
 };
@@ -105,7 +105,7 @@ fn test_all_p0_type_exports_are_available() {
     let _ = ProviderMode::Both;
     let _ = ProviderMode::Either;
 
-    let _report = Report {
+    let _report = SimpleReport {
         timestamp: "2026-04-16".to_string(),
         suite: "test".to_string(),
         total: 10,
@@ -210,7 +210,7 @@ fn test_types_compile_and_exports_are_correct() {
         let _ = OnMissingDependency::Fail;
         assert_eq!(PathConvention::RUN_ARTIFACTS, "artifacts/run-{id}");
         let _ = ProviderMode::Both;
-        let _ = Report {
+        let _ = SimpleReport {
             timestamp: "".to_string(),
             suite: "".to_string(),
             total: 0,

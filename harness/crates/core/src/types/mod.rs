@@ -52,7 +52,7 @@ pub use parity_verdict::{
 pub use path_convention::PathConvention;
 pub use provider_mode::ProviderMode;
 pub use regression_case::{RegressionCase, RegressionStatus};
-pub use report::{Report, TestCase, TestCaseStatus};
+pub use report::{SimpleReport, TestCase, TestCaseStatus};
 pub use runner_input::RunnerInput;
 pub use runner_output::RunnerOutput;
 pub use session_metadata::SessionMetadata;

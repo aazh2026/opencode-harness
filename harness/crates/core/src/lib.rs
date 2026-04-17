@@ -19,7 +19,7 @@ pub use types::artifact::{Artifact, ArtifactKind};
 pub use types::entry_mode::EntryMode;
 pub use types::fixture::{FixtureFile, FixtureProject, ResetStrategy, Workspace, WorkspacePolicy};
 pub use types::parity_verdict::{DiffCategory, ParityVerdict};
-pub use types::report::{Report, TestCase, TestCaseStatus};
+pub use types::report::{SimpleReport, TestCase, TestCaseStatus};
 pub use types::task::Task;
 pub use types::task::TaskCategory;
 pub use verifiers::{
